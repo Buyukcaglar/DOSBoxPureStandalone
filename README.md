@@ -20,13 +20,13 @@ The embedded game package is accessed directly from memory and is **never extrac
 
 # Project Status
 
-Phase 0 baseline validation, Phase 1 content-loading analysis, Phase 2 memory-backed loading and Phase 3 PE-resource loading are complete as of 2026-08-20.
+Phase 0 baseline validation, Phase 1 content-loading analysis, Phase 2 memory-backed loading, Phase 3 PE-resource loading, Phase 4 persistent overlays and Phase 5 automatic startup are complete as of 2026-08-20.
 
 Phase 3 embeds a license-safe smoke DOSZ as Windows `RCDATA`. When the executable starts without an explicit content path, Unleashed locates the resource with the Windows resource APIs and passes its memory-mapped pointer directly into the Phase 2 `memoryFile` path.
 
 The Release executable continued to mount and execute the embedded DOSZ while the build-source `.dosz` was temporarily absent. Its `DOSBOX.BAT` wrote `PHASE3.OK`, and the existing union drive persisted the result in `embedded.pure.zip`. Explicit external content and the Phase 2 `-memory-archive` mode remain functional.
 
-The next milestone is Phase 4: move writable overlays to a deterministic package-specific persistence location.
+The next milestone is Phase 6: add stable embedded package metadata, including the final human-defined package ID.
 
 ---
 
@@ -472,27 +472,58 @@ DOSBoxPure.exe -memory-archive "C:\Games\game.zip"
 
 An explicit content path takes precedence over the embedded resource. The first command uses the original file-backed path, and the second uses the Phase 2 external-file-to-RAM path.
 
-Phase 3 does not yet provide package metadata, a stable package ID, a final save location, custom game branding or a package-builder tool. The Process Monitor result confirms no extraction for this development fixture and captured build; broader title and image-format compatibility remains a later testing phase.
+Phase 3 did not provide package metadata or a final save location. Phase 4 now supplies deterministic archive-derived package identity and the final persistence-root behavior; Phase 6 will replace the interim identity with a human-defined metadata `package_id`. Custom game branding and a package-builder tool remain later phases. The Process Monitor result confirms no extraction for the development fixture and captured build; broader title and image-format compatibility remains a later testing phase.
 
 ---
 
-## Phase 4 — Persistent Overlay
+## Phase 4 — Persistent Overlay (complete)
 
 Ensure files written by DOS programs survive between launches.
 
-Suggested location:
+Primary persistence root:
 
 ```text
-%LOCALAPPDATA%\DOSBoxPurePackages\<package_id>\
+%LOCALAPPDATA%\DOSBoxPureStandalone\
 ```
 
-Example:
+Package-specific and shared-system paths:
 
 ```text
-%LOCALAPPDATA%\DOSBoxPurePackages\com.example.duke3d\
+%LOCALAPPDATA%\DOSBoxPureStandalone\<package_id>\
+%LOCALAPPDATA%\DOSBoxPureStandalone\system\
 ```
+
+If this root cannot be created or is not writable, the application must try
+the directory containing the running executable as its fallback root, using
+the same child layout. Failure of both locations must produce a clear error.
 
 The embedded archive remains read-only.
+
+Until Phase 6 metadata is available, the standalone frontend derives a
+rename-safe identity from the embedded archive bytes and size:
+
+```text
+archive-<fnv1a64>-<size-hex>
+```
+
+For example, the Phase 3 smoke package uses:
+
+```text
+archive-edba7044deb62010-786
+```
+
+Startup creates and performs an actual write check on the common root, package
+directory and shared `system` directory. When both the Local AppData location
+and executable-directory fallback fail, the dedicated executable reports a
+visible persistence error and exits instead of running without saves.
+
+Release validation used an isolated Local AppData root and repeated the smoke
+package launch. Both `PHASE3.OK` and the internal-disk `PHASE3.IMG` sentinel
+remained in the valid package-specific `embedded.pure.zip`; no adjacent
+`saves` or `system` directory was created. A second run with `LOCALAPPDATA`
+pointing at a regular file selected the executable-directory fallback and
+produced the same valid overlay there. An explicit external memory-archive
+launch retained the original adjacent `saves` and `system` behavior.
 
 ---
 
@@ -643,7 +674,7 @@ DUKE3D.EXE
 with runtime persistence under:
 
 ```text
-%LOCALAPPDATA%\DOSBoxPurePackages\com.example.duke3d\
+%LOCALAPPDATA%\DOSBoxPureStandalone\com.example.duke3d\
 ```
 
 Possible contents:

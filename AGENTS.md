@@ -301,11 +301,27 @@ Never:
 
 Persistent data should be stored separately.
 
-Preferred location:
+Primary persistence root:
 
 ```text
-%LOCALAPPDATA%\DOSBoxPurePackages\<package_id>\
+%LOCALAPPDATA%\DOSBoxPureStandalone\
 ```
+
+Required layout:
+
+```text
+%LOCALAPPDATA%\DOSBoxPureStandalone\<package_id>\
+%LOCALAPPDATA%\DOSBoxPureStandalone\system\
+```
+
+The package directory contains package-specific writable data. The `system`
+directory contains shared resources such as SoundFonts, MT-32 ROMs and system
+DOSZ files.
+
+If the primary root cannot be created or is not writable, fall back to the
+directory containing the running executable and preserve the same child
+layout. If neither location is writable, report a clear persistence error
+rather than silently discarding changes.
 
 Typical persistent data:
 

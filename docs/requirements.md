@@ -515,16 +515,32 @@ MANDATORY
 
 ## REQ-SAVE-004 — Save location
 
-Default persistence location should be under:
+The primary persistence root must be:
 
 ```text
-%LOCALAPPDATA%
+%LOCALAPPDATA%\DOSBoxPureStandalone\
 ```
 
-Suggested structure:
+The package-specific and shared-system paths must use this common root:
 
 ```text
-%LOCALAPPDATA%\DOSBoxPurePackages\<package_id>\
+%LOCALAPPDATA%\DOSBoxPureStandalone\<package_id>\
+%LOCALAPPDATA%\DOSBoxPureStandalone\system\
+```
+
+If the primary root cannot be created or is not writable, the application must
+try the directory containing the running executable as its fallback root and
+must preserve the same child layout. If both roots are unavailable, the
+application must report a clear persistence error rather than silently lose
+user changes.
+
+The application must verify write access rather than relying only on directory
+existence or attributes.
+
+Phase 4 implementation status:
+
+```text
+COMPLETE
 ```
 
 Status:

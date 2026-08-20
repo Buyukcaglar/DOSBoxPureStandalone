@@ -418,17 +418,28 @@ This is important because modifying the PE executable containing the currently r
 
 Persistent data should be stored outside the executable.
 
-Recommended location:
+Primary persistence root:
 
 ```text
-%LOCALAPPDATA%\<Vendor>\<Game>\
+%LOCALAPPDATA%\DOSBoxPureStandalone\
 ```
 
-Example:
+The root contains package-specific data and a shared system-resource directory:
 
 ```text
-%LOCALAPPDATA%\DOSBoxPurePackages\Duke3D\
+%LOCALAPPDATA%\DOSBoxPureStandalone\<package_id>\
+%LOCALAPPDATA%\DOSBoxPureStandalone\system\
 ```
+
+The package-specific directory stores writable overlays, settings, controller
+configuration and save states. The shared `system` directory stores optional
+resources such as SoundFonts, MT-32 ROMs and system DOSZ files.
+
+Startup must verify that the primary root can be created and written. If that
+check fails, it must try the directory containing the running executable as a
+fallback root and preserve the same child layout. If both roots are
+unavailable, startup must report a clear persistence error rather than run
+with silently discarded writes.
 
 Possible files:
 
@@ -884,11 +895,47 @@ Validated behavior:
 
 The fixture's no-extraction and internal floppy-image checks are complete. Broader compatibility testing with representative ZIP/DOSZ titles and ISO, CUE/BIN, IMG/IMA and VHD images remains Phase 8 work.
 
-## Phase 4
+## Phase 4 — completed
 
-Implement deterministic writable overlay paths.
+Dedicated embedded packages now initialize persistence before the core is
+loaded. The frontend derives an interim identity from the FNV-1a 64-bit hash
+and byte size of the PE resource:
 
-Ensure game saves persist after closing and reopening the executable.
+```text
+archive-<fnv1a64>-<size-hex>
+```
+
+This prevents different embedded archives from sharing an overlay and remains
+stable when the executable is renamed. Phase 6 metadata will replace this
+content-derived identity with the package's human-defined `package_id`, which
+will also remain stable when archive content is updated.
+
+The primary layout is:
+
+```text
+%LOCALAPPDATA%\DOSBoxPureStandalone\<archive-derived-id>\embedded.pure.zip
+%LOCALAPPDATA%\DOSBoxPureStandalone\<archive-derived-id>\DOSBoxPure.cfg
+%LOCALAPPDATA%\DOSBoxPureStandalone\system\
+```
+
+Startup creates and write-tests the common root, package directory and shared
+system directory. If any primary-path operation fails, it tries the directory
+containing the running executable as the fallback root and preserves the same
+child layout. If the fallback also fails, the application displays a clear
+error and exits before loading the embedded game.
+
+The frontend continues to return the package directory through
+`RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY` and the shared directory through
+`RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY`. DOSBox Pure therefore keeps using
+its existing overlay writer and the embedded archive remains immutable.
+
+Validation used an isolated writable Local AppData root for two consecutive
+Release launches. The same package path was selected both times, its
+`embedded.pure.zip` remained valid and contained `PHASE3.OK` and
+`PHASE3.IMG`, and no `saves` or `system` directory appeared beside the
+executable. Pointing `LOCALAPPDATA` at a regular file forced the executable-
+directory fallback, which produced the same valid overlay. An explicit Phase
+2 memory-archive launch retained ordinary Unleashed save/system paths.
 
 ## Phase 5 — completed
 

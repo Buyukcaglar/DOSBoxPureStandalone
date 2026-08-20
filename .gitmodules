@@ -1,9 +1,9 @@
 [submodule "dosbox-pure"]
 	path = dosbox-pure
-	url = https://github.com/schellingb/dosbox-pure.git
+	url = https://github.com/Buyukcaglar/dosbox-pure.git
 [submodule "dosbox-pure-unleashed"]
 	path = dosbox-pure-unleashed
-	url = https://github.com/schellingb/dosbox-pure-unleashed.git
+	url = https://github.com/Buyukcaglar/dosbox-pure-unleashed.git
 [submodule "ZillaLib"]
 	path = ZillaLib
 	url = https://github.com/schellingb/ZillaLib.git
