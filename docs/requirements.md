@@ -1091,6 +1091,24 @@ MANDATORY — PHASE 7 COMPLETE
 
 ---
 
+## REQ-BUILD-008 — Production distribution
+
+The production `DOSBoxPureStandAlone.exe` template must not contain the
+development smoke-test archive or metadata. Development fixture embedding must
+be opt-in. The builder may accept either a clean template or a legacy template
+with a complete archive/metadata pair, but must reject an incomplete pair.
+
+The distributed Windows x64 `makegame.exe` must be a self-contained .NET 8
+publish so users do not need to install .NET separately.
+
+Status:
+
+```text
+MANDATORY — COMPLETE
+```
+
+---
+
 # 14. Runtime Dependency Requirements
 
 ## REQ-DEP-001 — Minimize external dependencies

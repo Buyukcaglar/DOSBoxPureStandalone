@@ -116,8 +116,10 @@ internal static partial class PackageBuilder
         try
         {
             using var module = ResourceModule.Load(templatePath);
-            if (!module.HasNumeric(NativeResources.RtRcData, ArchiveResourceId) || !module.HasNumeric(NativeResources.RtRcData, MetadataResourceId))
-                throw new PackageBuilderException("Runtime template does not contain the Phase 6 archive and metadata resource slots.");
+            var hasArchive = module.HasNumeric(NativeResources.RtRcData, ArchiveResourceId);
+            var hasMetadata = module.HasNumeric(NativeResources.RtRcData, MetadataResourceId);
+            if (hasArchive != hasMetadata)
+                throw new PackageBuilderException("Runtime template contains an incomplete archive/metadata resource pair.");
             if (!module.HasNamed(NativeResources.RtGroupIcon, "ZL"))
                 throw new PackageBuilderException("Runtime template does not contain the expected ZL application icon group.");
         }

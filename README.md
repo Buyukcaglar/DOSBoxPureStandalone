@@ -434,7 +434,17 @@ GAME.EXE
 
 No archive copy should be written to disk.
 
-The Visual Studio build currently embeds the license-safe development fixture:
+Normal Visual Studio builds produce a clean runtime template with no game
+archive or package metadata. The license-safe development fixture remains
+available through an explicit MSBuild property:
+
+```powershell
+MSBuild.exe dosbox-pure-unleashed\DOSBoxPure-vs.vcxproj `
+  /p:Configuration=ReleaseGLCORE /p:Platform=x64 `
+  /p:EmbedDevelopmentPackage=true
+```
+
+That opt-in build embeds:
 
 ```text
 dosbox-pure-unleashed\embedded\phase3-smoke.dosz
@@ -448,7 +458,7 @@ IDR_EMBEDDED_ARCHIVE RCDATA
 
 The fixture contains `DOSBOX.BAT` plus a generated 1.44 MB FAT12 floppy image named `DISK.IMA`. At startup, the batch file mounts the image from inside the embedded DOSZ, reads `A:\IMAGE.OK`, and writes `PHASE3.IMG` to the normal overlay only when that internal-image read succeeds.
 
-Run the Release executable without arguments to select the embedded archive automatically:
+Run the opt-in fixture executable without arguments to select the embedded archive automatically:
 
 ```powershell
 DOSBoxPureStandAlone.exe
@@ -643,6 +653,16 @@ Open the project in Visual Studio 2026 or build it with:
 dotnet build .\tools\makegame\makegame.csproj -c Release
 ```
 
+The downloadable Windows x64 build is published as a self-contained,
+single-file executable. It carries the required .NET 8 runtime, so package
+authors do not need to install .NET separately:
+
+```powershell
+dotnet publish .\tools\makegame\makegame.csproj `
+  -c Release -r win-x64 --self-contained true `
+  -o .\tools\makegame\publish\win-x64
+```
+
 Manifest packaging:
 
 ```text
@@ -719,8 +739,10 @@ output and moves it into place only after resource verification. Existing
 output requires `--overwrite`; `--validate-only` performs all input checks
 without generating a package.
 
-See [tools/makegame/README.md](tools/makegame/README.md) for the complete
-manifest schema, configuration examples and publishing command.
+See [docs/makegame-guide.md](docs/makegame-guide.md) for the complete end-user
+guide, every command-line option, manifest schema, configuration examples and
+troubleshooting guidance. Developer-oriented notes remain in
+[tools/makegame/README.md](tools/makegame/README.md).
 
 ---
 

@@ -16,19 +16,23 @@ dotnet build .\tools\makegame\makegame.csproj -c Release
 The development build is placed under:
 
 ```text
-tools\makegame\bin\Release\net8.0-windows\
+tools\makegame\bin\Release\net8.0-windows\win-x64\
 ```
 
 The tool targets .NET 8 for Windows and uses the Windows Presentation Imaging
-Codec through WPF to decode and resize PNG icons. To publish a framework-
-dependent single-file command for 64-bit Windows:
+Codec through WPF to decode and resize PNG icons. Production publishing is
+self-contained and single-file, so target computers do not need a separately
+installed .NET runtime:
 
 ```powershell
 dotnet publish .\tools\makegame\makegame.csproj `
-  -c Release -r win-x64 --self-contained false `
-  -p:PublishSingleFile=true `
+  -c Release -r win-x64 --self-contained true `
   -o .\tools\makegame\publish\win-x64
 ```
+
+The self-contained and single-file settings are also recorded in the project
+file, making the explicit publish properties unnecessary for ordinary Release
+publishing.
 
 ## Package manifest
 
@@ -181,7 +185,8 @@ runtime and are not redirected by values copied from a development config.
 Before writing output, the builder validates:
 
 - manifest schema and package ID
-- runtime template resource slots
+- the runtime template and its expected application icon group
+- any pre-existing archive and metadata resources form a complete pair
 - ZIP/DOSZ structure, entry paths and readable contents
 - resolved startup target exists inside the archive
 - default configuration JSON and string values

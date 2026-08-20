@@ -717,6 +717,12 @@ The packager:
 6. optionally embed a complete default `DOSBoxPure.cfg` as resource 103
 7. reload and verify the generated executable before moving it into place
 
+The production runtime template contains neither resource 101 nor 102. Windows
+`UpdateResource` creates both resources during packaging. For compatibility,
+the builder also accepts an older development template when both resources are
+already present, but rejects a template containing only one member of the
+archive/metadata pair.
+
 Archive validation reads every ZIP member, rejects unsafe or duplicate paths,
 and requires the resolved startup file to exist. Startup resolves from CLI,
 manifest, reserved defaults-JSON `package_startup`, then root `DOSBOX.BAT`.
@@ -765,6 +771,9 @@ CLI presentation values replace matching config-file values before resource
 103 is serialized. When no window value is supplied by either source, the
 runtime's windowed default remains in effect. Scanlines-only and full CRT mode
 are mutually exclusive; the latter already includes scanlines.
+
+The distributed Windows x64 package builder is a compressed, self-contained
+.NET 8 single-file publish. It does not depend on a machine-wide .NET runtime.
 
 ---
 
@@ -950,9 +959,13 @@ with:
 PE RCDATA -> memory-backed DOS_File
 ```
 
-Validated behavior:
+Normal production builds omit resources 101 and 102 and act as clean package
+templates. The development fixture is enabled only with the MSBuild property
+`EmbedDevelopmentPackage=true`.
 
-- Debug and Release x64 builds contain `IDR_EMBEDDED_ARCHIVE`
+Validated fixture behavior:
+
+- opt-in Debug and Release x64 builds contain `IDR_EMBEDDED_ARCHIVE`
 - no-argument startup selects the embedded DOSZ automatically
 - `LockResource()` bytes flow directly into the existing memory-backed `DOS_File`
 - `DOSBOX.BAT` executes from the embedded archive

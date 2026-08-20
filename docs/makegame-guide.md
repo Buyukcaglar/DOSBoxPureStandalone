@@ -1,0 +1,552 @@
+# makegame Guide
+
+`makegame.exe` turns a DOS game stored in a ZIP or DOSZ archive into one
+dedicated Windows executable powered by DOSBox Pure Standalone. The generated
+game executable reads its archive directly from its own PE resources. It does
+not reconstruct or extract the packaged game archive to a temporary directory.
+
+The distributed Windows x64 `makegame.exe` is a self-contained .NET 8
+application. A separate .NET installation is not required.
+
+## Distribution contents
+
+Keep these two programs together after extracting the release ZIP:
+
+```text
+makegame.exe
+DOSBoxPureStandAlone.exe
+```
+
+`DOSBoxPureStandAlone.exe` is the clean runtime template. `makegame.exe`
+automatically finds it beside itself, in the current directory, or beside a
+package manifest. You can also select it explicitly with `--template`.
+
+## Quick start
+
+Prepare a game archive with one root-level `DOSBOX.BAT`:
+
+```text
+game.zip
+├── DOSBOX.BAT
+├── GAME.EXE
+└── game files...
+```
+
+Example `DOSBOX.BAT`:
+
+```bat
+@ECHO OFF
+GAME.EXE
+```
+
+Create the package from PowerShell:
+
+```powershell
+.\makegame.exe `
+  --archive ".\game.zip" `
+  --output ".\MyGame.exe" `
+  --package-id "com.example.mygame" `
+  --title "My Game"
+```
+
+The resulting `MyGame.exe` contains the emulator, package metadata, and the
+complete compressed game archive. User-created state remains separate under:
+
+```text
+%LOCALAPPDATA%\DOSBoxPureStandalone\com.example.mygame\
+```
+
+If `%LOCALAPPDATA%\DOSBoxPureStandalone\` cannot be created or written, the
+runtime falls back to `DOSBoxPureStandalone\` beside the packaged executable.
+
+## Command forms
+
+### Manifest mode
+
+The recommended repeatable form is:
+
+```powershell
+.\makegame.exe ".\package.json"
+```
+
+The explicit equivalent is:
+
+```powershell
+.\makegame.exe --manifest ".\package.json"
+```
+
+Manifest-relative paths are resolved from the directory containing the
+manifest.
+
+### Direct positional mode
+
+The archive and output can be the first two positional arguments:
+
+```powershell
+.\makegame.exe ".\game.dosz" ".\MyGame.exe" `
+  --package-id "com.example.mygame" `
+  --title "My Game"
+```
+
+If output is omitted, it defaults to the archive path with an `.exe`
+extension.
+
+### Direct named mode
+
+Named paths are clearer in scripts:
+
+```powershell
+.\makegame.exe `
+  --template ".\DOSBoxPureStandAlone.exe" `
+  --archive ".\game.dosz" `
+  --output ".\MyGame.exe" `
+  --package-id "com.example.mygame" `
+  --title "My Game"
+```
+
+Command-line values override matching manifest values. Command-line path
+overrides are resolved from the current working directory, not from the
+manifest directory.
+
+## Every command-line option
+
+| Option | Value | Purpose |
+| --- | --- | --- |
+| `-h`, `--help`, `/?` | none | Display built-in usage and exit. |
+| `--manifest` | JSON path | Load a package manifest. A positional `.json` path has the same effect. |
+| `--template` | EXE path | Select the clean `DOSBoxPureStandAlone.exe` runtime template. |
+| `--archive` | ZIP/DOSZ path | Select the game archive to embed. |
+| `--output` | EXE path | Select the generated executable path. |
+| `--package-id` | identifier | Set the stable persistence identity. |
+| `--title` | text | Set the package title and default Windows description. |
+| `--startup` | archive path | Select an archive-relative `.EXE`, `.COM`, or `.BAT` startup file. |
+| `--icon` | PNG path | Convert a PNG into the packaged application's Windows icon. |
+| `--config` | JSON path | Embed DOSBox Pure defaults from a flat `DOSBoxPure.cfg`-style JSON object. |
+| `--window-mode` | `windowed` or `fullscreen` | Set the first-launch window mode. |
+| `--scanlines` | none | Enable scanlines-only mode with the project's CRT appearance defaults. |
+| `--crt-filter` | none | Enable TV-style CRT filtering and scanlines with the project's appearance defaults. |
+| `--validate-only` | none | Validate all inputs without creating an executable. |
+| `--overwrite` | none | Allow replacement of an existing output executable. |
+
+Option names are case-insensitive. Values are interpreted according to the
+rules described below.
+
+## Required identity and title
+
+### `--package-id`
+
+The package ID determines where persistent saves and settings are stored. It
+must:
+
+- contain 1 through 128 ASCII characters;
+- start and end with a letter or digit;
+- use only letters, digits, `.`, `-`, and `_` internally; and
+- not equal the reserved name `system`.
+
+Use a stable reverse-domain style ID:
+
+```powershell
+--package-id "org.example.publisher.game"
+```
+
+Do not change the ID merely because the output filename or package version
+changes. Keeping it stable retains the same persistence directory.
+
+### `--title`
+
+The title becomes the native window title and supplies default Windows version
+information. It must be non-empty, contain no control characters, and fit
+within 256 UTF-8 bytes.
+
+```powershell
+--title "Beneath a Steel Sky"
+```
+
+In direct mode, title defaults to the archive filename, but specifying the
+human-readable title is recommended.
+
+## Runtime template
+
+The release `DOSBoxPureStandAlone.exe` is a clean template and does not contain
+a game. Template discovery checks:
+
+1. the manifest directory;
+2. the directory containing `makegame.exe`; and
+3. the current directory in direct mode.
+
+Use an explicit template when it is stored elsewhere:
+
+```powershell
+--template "C:\Tools\DOSBoxPureStandAlone.exe"
+```
+
+The builder validates the Windows image and expected `ZL` application icon.
+Legacy development templates containing both archive and metadata resources
+are accepted; a template containing only one of those resources is rejected.
+
+## Archive requirements
+
+`--archive` accepts `.zip` and `.dosz`. The builder:
+
+- validates the ZIP directory and reads every file;
+- rejects empty archives;
+- rejects duplicate and unsafe paths;
+- rejects absolute paths, drive-qualified paths, and `.` or `..` segments;
+- verifies that the selected startup file exists; and
+- currently loads the archive into memory, imposing an approximately 2 GiB
+  practical maximum.
+
+The game archive remains compressed inside the generated executable. Disk
+images such as ISO, CUE/BIN, IMG/IMA, and VHD can remain inside the archive and
+use DOSBox Pure's normal image support.
+
+## Automatic startup
+
+Startup is selected in this order:
+
+```text
+--startup
+  > manifest startup
+  > package_startup in --config/default_config
+  > root-level DOSBOX.BAT
+```
+
+The selected target must be an archive-relative `.EXE`, `.COM`, or `.BAT` path.
+
+### Starting an executable directly
+
+```powershell
+--startup "GAME.EXE"
+```
+
+Subdirectories are supported:
+
+```powershell
+--startup "GAME\GAME.EXE"
+```
+
+`--startup` identifies one file; it is not a DOS command line. Spaces,
+parameters, drive-qualified paths, redirection, and shell operators are
+intentionally rejected. For launch parameters or setup commands, use a batch
+file.
+
+### Starting with parameters
+
+Put `START.BAT` at the archive root:
+
+```bat
+@ECHO OFF
+SKY.EXE CFG=C:\
+```
+
+Then package with:
+
+```powershell
+--startup "START.BAT"
+```
+
+The dedicated runtime automatically exits after a custom startup program or
+batch file returns. An explicit final `EXIT` is unnecessary.
+
+### Mounting a nested ZIP as D:
+
+For an installed game that still requires original CD files, store the original
+archive as `SKY-CD.ZIP` inside the outer package and use:
+
+```bat
+@ECHO OFF
+IMGMOUNT D C:\SKY-CD.ZIP -t zip
+IF NOT EXIST D:\SKY.DSK GOTO MOUNTERROR
+C:
+SKY.EXE CFG=C:\
+GOTO END
+
+:MOUNTERROR
+ECHO Required CD data could not be mounted.
+PAUSE
+
+:END
+```
+
+The DOSBox `IMGMOUNT` type value `zip` is case-sensitive in the bundled core;
+use lowercase `-t zip`. Store a nested ZIP without further compression in the
+outer ZIP when practical so random access does not repeatedly decompress it.
+
+## Text-mode games
+
+Dedicated graphical packages hide the DOS shell and transitional DOS text
+frames. A game intended to remain in text mode must include an empty root-level
+marker:
+
+```text
+TEXTMODE.DBP
+```
+
+For example, a KROZ package normally contains both `TEXTMODE.DBP` and its
+startup target. Do not add the marker to a graphical game merely because its
+startup briefly displays text.
+
+## PNG application icon
+
+Use `--icon` with a PNG file:
+
+```powershell
+--icon "C:\Artwork\game-icon.png"
+```
+
+The builder preserves aspect ratio, centers rectangular artwork on a
+transparent square, and generates 16, 24, 32, 48, 64, 128, and 256-pixel
+Windows icon frames. It replaces the template icon group and verifies that
+Windows can extract the result.
+
+The input must be a decodable PNG. For best results, use square artwork at
+least 256 by 256 pixels with transparency where appropriate.
+
+## Window and CRT options
+
+### Windowed
+
+```powershell
+--window-mode windowed
+```
+
+Windowed is the runtime default when neither the CLI nor a defaults JSON file
+specifies `screen_fullscreen`.
+
+### Fullscreen
+
+```powershell
+--window-mode fullscreen
+```
+
+### Scanlines only
+
+```powershell
+--scanlines
+```
+
+This generates:
+
+```json
+{
+  "interface_crtfilter": "1",
+  "interface_crtscanline": "3",
+  "interface_crtblur": "7",
+  "interface_crtcurvature": "0",
+  "interface_crtcorner": "0"
+}
+```
+
+### TV-style CRT filter
+
+```powershell
+--crt-filter
+```
+
+This generates the same sharpness, curvature, corner, and scanline defaults,
+with `interface_crtfilter` set to `2`.
+
+`--scanlines` and `--crt-filter` are mutually exclusive because the full CRT
+filter already includes scanlines. Explicit CLI presentation options replace
+conflicting keys loaded through `--config`.
+
+## Complete default configuration
+
+`--config` accepts the flat JSON format written by `DOSBoxPure.cfg`. Every
+value must be a JSON string:
+
+```json
+{
+  "package_startup": "START.BAT",
+  "screen_fullscreen": "true",
+  "dosbox_pure_memory_size": "32",
+  "dosbox_pure_cycles": "26800",
+  "dosbox_pure_machine": "svga",
+  "dosbox_pure_svga": "svga_s3",
+  "interface_scaling": "default"
+}
+```
+
+Package it with:
+
+```powershell
+--config ".\DOSBoxPure.defaults.cfg"
+```
+
+The file must be a JSON object no larger than 1 MiB. Keys can contain letters,
+digits, `_`, `.`, and `-`; each string value can contain at most 4096 UTF-8
+bytes. Comments and trailing commas are accepted.
+
+`package_startup` is a builder directive. It is promoted into package metadata
+and removed from the emulator defaults before embedding.
+
+The safest way to build a defaults file is to configure the matching
+`DOSBoxPureStandAlone.exe`, close it so settings are saved, copy its JSON file,
+and remove machine-specific or personal values. Option names can evolve with
+DOSBox Pure, so copying values from the same runtime version avoids guesswork.
+
+Defaults are not permanent locks. Runtime precedence is:
+
+```text
+dedicated-package safety overrides
+  > persisted user settings
+  > embedded package defaults
+  > built-in defaults
+```
+
+Thus the package controls first-launch defaults while later user choices can
+persist.
+
+## Manifest reference
+
+A complete manifest using every manifest field is:
+
+```json
+{
+  "format_version": 1,
+  "package_id": "com.example.game",
+  "title": "Example DOS Game",
+  "startup": "START.BAT",
+  "template": "DOSBoxPureStandAlone.exe",
+  "archive": "game.dosz",
+  "output": "ExampleGame.exe",
+  "icon": "game-icon.png",
+  "default_config": "DOSBoxPure.defaults.cfg",
+  "version_info": {
+    "file_version": "1.2.0.0",
+    "product_version": "1.2.0.0",
+    "company_name": "Example Publisher",
+    "file_description": "Example DOS Game",
+    "product_name": "Example DOS Game",
+    "legal_copyright": "Copyright Example Publisher"
+  }
+}
+```
+
+Unknown manifest fields are rejected to catch spelling mistakes.
+
+### Manifest fields
+
+| Field | Required | Meaning |
+| --- | --- | --- |
+| `format_version` | yes | Must currently be numeric `1`. |
+| `package_id` | yes | Stable persistence identity. |
+| `title` | recommended | Human-readable package title. Defaults from the archive filename if omitted. |
+| `startup` | no | Archive-relative startup target. |
+| `template` | no if auto-discovered | Runtime template path. |
+| `archive` | yes | ZIP/DOSZ input path. |
+| `output` | no | Output EXE path; defaults from the archive path. |
+| `icon` | no | PNG icon path. |
+| `default_config` | no | Flat defaults JSON path. |
+| `version_info` | no | Windows application version strings. |
+
+Presentation switches are command-line features. To make equivalent values
+fully manifest-driven, place the corresponding settings in `default_config`.
+
+### Version information
+
+`file_version` and `product_version` accept one through four numeric components,
+each from 0 through 65535. Missing components become zero. If absent, version
+defaults to `1.0.0.0`. The string fields can contain up to 1024 characters and
+cannot contain control characters.
+
+Windows `InternalName` and `OriginalFilename` are generated from the output
+filename. If no custom description or product name is supplied, the package
+title is used.
+
+## Full direct-mode example
+
+```powershell
+.\makegame.exe `
+  --template ".\DOSBoxPureStandAlone.exe" `
+  --archive "C:\Games\Dune2\dune2.zip" `
+  --output "C:\Games\Dune2\DuneII.exe" `
+  --package-id "com.westwood.dune2.personal" `
+  --title "Dune II" `
+  --startup "DOSBOX.BAT" `
+  --icon "C:\Games\Dune2\Dune2.png" `
+  --config "C:\Games\Dune2\DOSBoxPure.defaults.cfg" `
+  --window-mode fullscreen `
+  --scanlines
+```
+
+## Validation and overwrite workflow
+
+Validate first without producing output:
+
+```powershell
+.\makegame.exe ".\package.json" --validate-only
+```
+
+Build when validation succeeds:
+
+```powershell
+.\makegame.exe ".\package.json"
+```
+
+Existing output is protected. Replace it explicitly after reviewing your
+inputs:
+
+```powershell
+.\makegame.exe ".\package.json" --overwrite
+```
+
+The builder writes a temporary executable beside the requested output, updates
+its PE resources, reloads and verifies the result, and only then moves it into
+place. Failed packaging removes the temporary output.
+
+## Generated package behavior
+
+- The embedded base archive is immutable and read from memory.
+- Save changes use DOSBox Pure's writable overlay under the stable package ID.
+- Renaming the generated game EXE does not change its persistence location.
+- The startup splash, shell, and content-selection menu remain hidden for a
+  dedicated package.
+- The runtime exits automatically when the configured startup target returns.
+- The generated EXE is unsigned. Resource updates invalidate any signature on
+  the template, so Authenticode signing must occur after packaging.
+
+## Troubleshooting
+
+### “Game archive must contain exactly one root-level DOSBOX.BAT”
+
+Add a root `DOSBOX.BAT`, select an existing startup file with `--startup`, add
+manifest `startup`, or use `package_startup` in the defaults JSON.
+
+### “Too many positional arguments”
+
+Only archive and output are positional. `--startup` accepts one file path, not
+an executable plus its parameters. Move parameters into a `.BAT` file.
+
+### A program cannot find CD data on D:
+
+Preserve the original CD archive or image inside the package and mount it from
+the startup batch. For a nested ZIP, use lowercase `-t zip` as shown earlier.
+
+### A text game remains hidden
+
+Add an empty root-level `TEXTMODE.DBP` marker. Do not add it to ordinary
+graphical games.
+
+### Windows SmartScreen or antivirus warning
+
+Locally generated executables are unsigned and uncommon. Review the source,
+build from source if desired, and Authenticode-sign packages intended for
+broader distribution. Do not disable security software globally.
+
+### Package settings do not replace later user settings
+
+This is intentional. Embedded configuration is a defaults layer; persisted
+user choices have higher priority. Delete or adjust the package's persistence
+directory only when intentionally resetting user configuration.
+
+## Redistribution and licensing
+
+`makegame` does not grant permission to redistribute DOS games, firmware,
+operating-system images, fonts, sound ROMs, artwork, or other input content.
+Package only material for which you have suitable rights. Preserve required
+copyright notices and license files inside the game archive.
+
+See `README-DISCLAIMER.md` and the `licenses` directory in the binary
+distribution for upstream attribution, license terms, source locations, and
+warranty disclaimers.
