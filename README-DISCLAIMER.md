@@ -33,12 +33,17 @@ The repository records the exact DOSBox Pure and DOSBox Pure Unleashed fork
 revisions as Git submodules. Preserve the license files and source availability
 when redistributing binaries.
 
-## No games are supplied or licensed
+## Game content rights
 
-The release archive contains no commercial or freeware DOS game. The package
-builder does not download games and does not grant rights to copy or distribute
-game data, executables, manuals, artwork, fonts, firmware, operating-system
-images, SoundFonts, or ROM files.
+The production release archive contains no commercial or freeware DOS game.
+The repository's `tools/makegame/sample-output` directory contains a generated
+**Beneath a Steel Sky** showcase package redistributed under the game's
+accompanying freeware distribution terms. Its original redistribution readme
+is preserved beside the showcase and inside the embedded game archive.
+
+The package builder does not download games and does not itself grant rights to
+copy or distribute game data, executables, manuals, artwork, fonts, firmware,
+operating-system images, SoundFonts, or ROM files.
 
 Users and package publishers are solely responsible for confirming that they
 may use and redistribute every file they provide to `makegame.exe`. A game's

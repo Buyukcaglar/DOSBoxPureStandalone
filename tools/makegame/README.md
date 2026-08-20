@@ -200,3 +200,11 @@ and only then moves it into place. A failed build removes the temporary file.
 The resulting game executable is unsigned. Updating PE resources invalidates
 any Authenticode signature on the template, so code signing—if required—must
 be performed after packaging.
+
+## Showcase output
+
+`sample-output/BASS.exe` is a completed Beneath a Steel Sky showcase package.
+Its source game permits free redistribution when the accompanying readme and
+copyright notices are preserved; the original redistribution readme is stored
+beside the executable and remains embedded in the package. See
+`sample-output/README.md` for package details and its SHA-256 checksum.
