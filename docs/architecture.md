@@ -550,6 +550,31 @@ exit
 
 The exact startup script is game-specific.
 
+## 10.1 Dedicated embedded-package presentation
+
+The standalone frontend marks a launch as dedicated-package mode only when no explicit external content path was supplied and a valid embedded PE archive resource was selected.
+
+In dedicated-package mode it:
+
+1. overrides `dosbox_pure_menu_time` to `0` before `retro_load_game()` initializes DOSBox Pure
+2. skips the Unleashed `DrawIntro()` logo animation
+3. clears the window normally but does not draw the DOS framebuffer until `DBPS_IsStartupVideoReady()` reports a ready packaged-program display and three fresh core-video submissions have completed
+
+The menu-time override allows the top-level `exit` command at the end of `DOSBOX.BAT` to shut down the standalone frontend immediately. Hiding the framebuffer prevents both the DOS shell and text-mode initialization emitted by a graphics game from flashing before the game establishes its first graphical frame. The additional frame-submission barrier handles the hardware-rendering handoff where the emulated mode changes before the shared surface stops containing its last DOS frame. The start-menu OSD remains available as a recovery surface if it is opened explicitly.
+
+`DBPS_IsStartupVideoReady()` supports both graphical and text-mode games:
+
+- embedded packages default to graphics presentation and reveal immediately once the packaged program enters a graphics video mode
+- a package that intentionally uses a DOS text display opts in with an empty root-level `TEXTMODE.DBP` archive marker
+- on entry to a text-mode program, the core snapshots the current visible character/attribute cells
+- text readiness is ignored for the first second, preventing a graphics game's temporary text-page or text-resolution changes from exposing a transitional DOS frame
+- after that dwell, a text-mode game reveals when at least one third of those cells have changed or the program changes the visible text page or text resolution
+- a 15-second fallback reveals sparse text applications that intentionally update less than one third of the screen
+
+This keeps Dune II's transitional `SET BLASTER` and memory-detection lines hidden regardless of their duration. A full-screen text game such as KROZ remains supported by including `TEXTMODE.DBP`; without that explicit marker an embedded package never exposes text mode during startup.
+
+Explicit external content paths do not enable dedicated-package mode, preserving normal DOSBox Pure Unleashed behavior for development and ordinary use.
+
 ---
 
 # 11. Disk Images
@@ -865,9 +890,17 @@ Implement deterministic writable overlay paths.
 
 Ensure game saves persist after closing and reopening the executable.
 
-## Phase 5
+## Phase 5 — completed
 
-Implement automatic startup behavior.
+Automatic embedded-package presentation now:
+
+- skips the DOSBox Pure Unleashed startup animation
+- hides the DOS framebuffer until the packaged program has produced either a graphics frame or a substantially replaced text screen
+- starts a root-level `DOSBOX.BAT` without showing the command shell
+- permits its top-level `exit` command to close the standalone executable immediately
+- leaves explicit external content launches unchanged
+
+Validation used the license-safe Phase 3 smoke package and the local Dune II test package. The clean smoke run exited by itself with code `0` and did not emit the top-shell warning. Visual inspection of the Dune II build found its Westwood logo to be the first exposed application frame.
 
 ## Phase 6
 

@@ -447,6 +447,34 @@ DESIRED
 
 ---
 
+## REQ-START-005 — Seamless packaged-game presentation
+
+When the executable automatically selects an embedded package, it must not show the DOSBox Pure startup animation, expose the DOS command shell, expose transitional text-mode initialization emitted by a graphics executable, or expose a stale DOS frame while the hardware-rendered surface transitions to the first graphical frames.
+
+The reveal logic must also support DOS games that intentionally remain in text mode through an explicit package declaration. A text package declares this behavior with an empty root-level `TEXTMODE.DBP` marker and must become visible after a short text-mode dwell and replacement of the shell display, or after a bounded fallback. Without the marker, temporary text-page or text-resolution changes made by a graphics game during initialization must never expose a transitional DOS frame, regardless of their duration.
+
+Explicit external content launches may retain the normal DOSBox Pure Unleashed presentation.
+
+Status:
+
+```text
+MANDATORY
+```
+
+---
+
+## REQ-START-006 — Automatic shutdown after game exit
+
+For an embedded package, returning from the configured game to a top-level `exit` command in `DOSBOX.BAT` must close the standalone executable without showing the `Unable to exit top DOS shell` warning or returning to the Start Menu.
+
+Status:
+
+```text
+MANDATORY
+```
+
+---
+
 # 8. Persistence Requirements
 
 ## REQ-SAVE-001 — Persistent save games

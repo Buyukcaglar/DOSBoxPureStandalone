@@ -494,7 +494,7 @@ The embedded archive remains read-only.
 
 ---
 
-## Phase 5 — Automatic Launch
+## Phase 5 — Automatic Launch (complete)
 
 The generated executable should start the configured DOS title immediately.
 
@@ -514,6 +514,20 @@ exit
 ```
 
 No file-selection UI should appear for normal packaged games.
+
+When content is selected from the embedded PE resource, the standalone frontend now applies dedicated-package defaults:
+
+- the DOSBox Pure animated startup logo is skipped
+- the DOS framebuffer remains hidden until DOSBox Pure reports that the packaged program has produced a ready game display
+- the Start Menu behavior is overridden to exit the standalone executable immediately when the top-level `exit` in `DOSBOX.BAT` runs
+
+Embedded packages default to graphics presentation and become visible only when they enter a graphics video mode. After readiness is detected, the frontend waits for three fresh core-video submissions before exposing the hardware-rendered surface, because the emulated video mode can change before the surface receives its new pixels. This deterministic default prevents both slow text initialization and a stale final DOS frame from flashing.
+
+Text games must opt in by including an empty root-level `TEXTMODE.DBP` marker in the embedded archive. Marked text games become visible after remaining in text mode for one second and replacing at least one third of the original shell cells; sparse text applications use a 15-second safety fallback. A KROZ package therefore includes `TEXTMODE.DBP`, while a Dune II package does not.
+
+The embedded-package defaults also prevent the `Unable to exit top DOS shell` warning after the game returns to `DOSBOX.BAT`.
+
+These defaults are scoped to automatic embedded-resource startup. Explicit external ZIP/DOSZ launches retain the ordinary DOSBox Pure Unleashed presentation and Start Menu behavior.
 
 ---
 
