@@ -374,13 +374,13 @@ This proves that a physical archive file is not required by the archive layer.
 Run the Phase 2 mode with:
 
 ```powershell
-DOSBoxPure.exe -memory-archive "C:\Games\game.zip"
+DOSBoxPureStandAlone.exe -memory-archive "C:\Games\game.zip"
 ```
 
 or:
 
 ```powershell
-DOSBoxPure.exe -memory-archive "C:\Games\game.dosz"
+DOSBoxPureStandAlone.exe -memory-archive "C:\Games\game.dosz"
 ```
 
 In this proof of concept, the standalone frontend performs the one permitted input-file read and owns the RAM buffer for the complete core lifetime. DOSBox Pure receives the original path only as logical metadata for naming, overlays, parent archives and sidecars; the outer ZIP/DOSZ bytes are read through `memoryFile`.
@@ -451,7 +451,7 @@ The fixture contains `DOSBOX.BAT` plus a generated 1.44 MB FAT12 floppy image na
 Run the Release executable without arguments to select the embedded archive automatically:
 
 ```powershell
-DOSBoxPure.exe
+DOSBoxPureStandAlone.exe
 ```
 
 The runtime uses the logical path `embedded.dosz` for DOSBox Pure content identity and overlay naming. The build-source DOSZ is not needed after linking; runtime testing succeeded while that file was temporarily moved away.
@@ -468,8 +468,8 @@ A Process Monitor capture of that same run contained 64,555 events for `DOSBoxPu
 Development compatibility is preserved:
 
 ```powershell
-DOSBoxPure.exe "C:\Games\game.zip"
-DOSBoxPure.exe -memory-archive "C:\Games\game.zip"
+DOSBoxPureStandAlone.exe "C:\Games\game.zip"
+DOSBoxPureStandAlone.exe -memory-archive "C:\Games\game.zip"
 ```
 
 An explicit content path takes precedence over the embedded resource. The first command uses the original file-backed path, and the second uses the Phase 2 external-file-to-RAM path.
@@ -652,7 +652,7 @@ makegame.exe package.json
 Direct packaging:
 
 ```powershell
-makegame.exe game.dosz GAME.EXE --template DOSBoxPure.exe `
+makegame.exe game.dosz GAME.EXE --template DOSBoxPureStandAlone.exe `
   --package-id com.example.game --title "Example Game" `
   --startup GAME.EXE --window-mode fullscreen --crt-filter
 ```
@@ -735,7 +735,7 @@ Duke3DPackage\
 ├── duke3d.dosz
 ├── duke3d.png
 ├── DOSBoxPure.defaults.cfg
-└── DOSBoxPure.exe
+└── DOSBoxPureStandAlone.exe
 ```
 
 Build command:

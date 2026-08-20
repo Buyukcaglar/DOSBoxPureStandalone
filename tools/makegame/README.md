@@ -45,7 +45,7 @@ Example:
   "format_version": 1,
   "package_id": "com.example.game",
   "title": "Example DOS Game",
-  "template": "DOSBoxPure.exe",
+  "template": "DOSBoxPureStandAlone.exe",
   "archive": "game.dosz",
   "output": "ExampleGame.exe",
   "icon": "game-icon.png",
@@ -65,7 +65,7 @@ Paths in a manifest are resolved relative to the manifest file. Command-line
 paths are resolved relative to the current directory and override manifest
 paths.
 
-The runtime template is the Phase 7 `DOSBoxPure.exe` produced by the
+The runtime template is the `DOSBoxPureStandAlone.exe` produced by the
 `dosbox-pure-unleashed` Release build. The archive must be a valid ZIP/DOSZ.
 Automatic startup can come from a root-level `DOSBOX.BAT`, manifest `startup`,
 `--startup`, or `package_startup` in the defaults JSON.
@@ -74,7 +74,7 @@ Direct command-line packaging is also supported:
 
 ```powershell
 makegame.exe game.dosz GAME.exe `
-  --template DOSBoxPure.exe `
+  --template DOSBoxPureStandAlone.exe `
   --package-id com.example.game `
   --title "Example DOS Game" `
   --icon game-icon.png `

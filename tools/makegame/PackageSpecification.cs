@@ -121,8 +121,8 @@ internal sealed class PackageSpecification
     {
         var candidates = new[]
         {
-            Path.Combine(manifestDirectory, "DOSBoxPure.exe"),
-            Path.Combine(AppContext.BaseDirectory, "DOSBoxPure.exe"),
+            Path.Combine(manifestDirectory, "DOSBoxPureStandAlone.exe"),
+            Path.Combine(AppContext.BaseDirectory, "DOSBoxPureStandAlone.exe"),
         };
         return candidates.FirstOrDefault(File.Exists);
     }

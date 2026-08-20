@@ -2,7 +2,7 @@
   "format_version": 1,
   "package_id": "com.example.game",
   "title": "Example DOS Game",
-  "template": "DOSBoxPure.exe",
+  "template": "DOSBoxPureStandAlone.exe",
   "archive": "game.dosz",
   "output": "ExampleGame.exe",
   "icon": "game-icon.png",

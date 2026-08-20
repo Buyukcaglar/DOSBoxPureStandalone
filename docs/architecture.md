@@ -698,7 +698,7 @@ package\
   game.dosz
   game-icon.png
   DOSBoxPure.defaults.cfg
-  DOSBoxPure.exe
+  DOSBoxPureStandAlone.exe
 ```
 
 Example command:

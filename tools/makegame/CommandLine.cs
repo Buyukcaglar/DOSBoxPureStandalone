@@ -102,7 +102,7 @@ internal sealed class CommandLine
         Console.WriteLine("  makegame.exe package.json [--output GAME.exe] [--overwrite]");
         Console.WriteLine();
         Console.WriteLine("Direct mode:");
-        Console.WriteLine("  makegame.exe game.dosz GAME.exe --template DOSBoxPure.exe");
+        Console.WriteLine("  makegame.exe game.dosz GAME.exe --template DOSBoxPureStandAlone.exe");
         Console.WriteLine("      --package-id com.example.game --title \"Example Game\"");
         Console.WriteLine("      [--startup GAME.EXE] [--icon game.png] [--config DOSBoxPure.cfg]");
         Console.WriteLine("      [--window-mode windowed|fullscreen] [--scanlines|--crt-filter]");
@@ -110,7 +110,7 @@ internal sealed class CommandLine
         Console.WriteLine();
         Console.WriteLine("Options:");
         Console.WriteLine("  --manifest <path>     Package JSON manifest");
-        Console.WriteLine("  --template <path>     Clean Phase 7 DOSBoxPure.exe runtime template");
+        Console.WriteLine("  --template <path>     DOSBoxPureStandAlone.exe runtime template");
         Console.WriteLine("  --archive <path>      ZIP or DOSZ game archive");
         Console.WriteLine("  --output <path>       Output Windows executable");
         Console.WriteLine("  --package-id <id>     Stable persistence identity");
