@@ -465,7 +465,13 @@ MANDATORY
 
 ## REQ-START-006 — Automatic shutdown after game exit
 
-For an embedded package, returning from the configured game to a top-level `exit` command in `DOSBOX.BAT` must close the standalone executable without showing the `Unable to exit top DOS shell` warning or returning to the Start Menu.
+For an embedded package, returning from the configured game to a top-level
+`exit` command in `DOSBOX.BAT` must close the standalone executable without
+showing the `Unable to exit top DOS shell` warning or returning to the Start
+Menu. When metadata selects an `.EXE`, `.COM` or non-default `.BAT` directly,
+the runtime must append the equivalent top-shell `exit` to its generated
+in-memory autoexec sequence. It must not display the Pure Menu
+`PRESS ANY KEY TO RETURN TO START MENU` completion prompt.
 
 Status:
 
@@ -859,9 +865,12 @@ Status:
 DESIRED
 ```
 
-For format version 1, the field is optional and defaults to `DOSBOX.BAT`.
-Phase 6 rejects other startup values because custom startup paths are not yet
-implemented.
+For format version 1, the field is optional and defaults to `DOSBOX.BAT`. It
+may identify a safe archive-relative `.EXE`, `.COM` or `.BAT`. The builder must
+verify that the resolved startup target exists inside the archive. A defaults
+JSON may supply reserved `package_startup` when CLI and manifest startup are
+absent; that directive is package metadata and must not be passed to the core
+as an emulator option.
 
 ---
 
@@ -899,11 +908,34 @@ COMPLETE
 
 ---
 
+## REQ-META-006 — Optional package defaults resource
+
+When a package includes a default DOSBox Pure configuration, metadata must
+identify it as numeric PE resource 103:
+
+```json
+{
+  "default_config_resource": 103
+}
+```
+
+The resource must be parsed from memory, limited to 1 MiB, and must not be
+reconstructed as a physical config file. Persisted user settings must override
+package defaults, while dedicated-package safety overrides remain authoritative.
+
+Status:
+
+```text
+MANDATORY WHEN A DEFAULT CONFIG IS INCLUDED — PHASE 7 COMPLETE
+```
+
+---
+
 # 13. Packaging Tool Requirements
 
 ## REQ-BUILD-001 — Automated package generation
 
-A command-line tool should eventually generate the final executable.
+A command-line tool must generate the final executable.
 
 Example:
 
@@ -914,14 +946,14 @@ makegame.exe game.dosz GAME.EXE
 Status:
 
 ```text
-MANDATORY FOR FINAL PROJECT
+MANDATORY — PHASE 7 COMPLETE
 ```
 
 ---
 
 ## REQ-BUILD-002 — Template executable
 
-The packager may operate by copying a clean runtime executable and adding package resources.
+The packager operates by copying a clean runtime executable and adding package resources.
 
 Conceptual process:
 
@@ -932,7 +964,9 @@ game.dosz
         +
 package.json
         +
-game.ico
+game-icon.png
+        +
+DOSBoxPure.defaults.cfg (optional)
         =
 GAME.EXE
 ```
@@ -940,19 +974,21 @@ GAME.EXE
 Status:
 
 ```text
-RECOMMENDED
+COMPLETE
 ```
 
 ---
 
 ## REQ-BUILD-003 — Custom icon
 
-The package builder should support assigning a game-specific Windows icon.
+The package builder must accept PNG input, preserve its aspect ratio, convert
+it to valid multi-size Windows icon resources and replace the application's
+icon group.
 
 Status:
 
 ```text
-DESIRED
+MANDATORY — PHASE 7 COMPLETE
 ```
 
 ---
@@ -973,19 +1009,83 @@ CompanyName
 Status:
 
 ```text
-DESIRED
+DESIRED — PHASE 7 COMPLETE
 ```
 
 ---
 
 ## REQ-BUILD-005 — Archive validation
 
-The package builder should validate the supplied game archive before generating the executable.
+The package builder must validate the supplied game archive before generating the executable.
+It must resolve startup using CLI, manifest, reserved defaults-JSON
+`package_startup`, then root `DOSBOX.BAT`, and verify that the selected `.EXE`,
+`.COM` or `.BAT` exists inside the archive.
 
 Status:
 
 ```text
-MANDATORY
+MANDATORY — PHASE 7 COMPLETE
+```
+
+---
+
+## REQ-BUILD-006 — Optional default configuration
+
+The package builder must accept an optional DOSBox Pure configuration file in
+the flat JSON format written by `DOSBoxPure.cfg`. This avoids duplicating the
+large and evolving core-option catalog in the package tool and supports values
+such as:
+
+```text
+screen_fullscreen
+dosbox_pure_memory_size
+dosbox_pure_cycles
+dosbox_pure_machine
+dosbox_pure_svga
+interface_scaling
+interface_crtfilter
+interface_crtscanline
+```
+
+All config values must be JSON strings. The builder must validate and normalize
+the data before embedding it as PE resource 103. Reserved `package_startup` is
+promoted to package metadata when no CLI or manifest startup is present and is
+not embedded as an emulator setting.
+
+The builder must also expose common presentation defaults without requiring a
+hand-edited config file:
+
+```text
+--window-mode windowed|fullscreen
+--scanlines
+--crt-filter
+```
+
+Windowed is the default when neither CLI nor config specifies a mode.
+`--scanlines` maps to scanlines-only mode with normal intensity;
+`--crt-filter` maps to TV-style phosphors with normal scanlines. These effect
+flags are mutually exclusive. Explicit CLI values override matching values
+from the defaults JSON before resource 103 is generated.
+
+Status:
+
+```text
+MANDATORY — PHASE 7 COMPLETE
+```
+
+---
+
+## REQ-BUILD-007 — Safe output transaction
+
+The builder must not leave a partially updated executable at the requested
+output path. It must update a temporary copy, reload and verify required
+resources, protect existing output unless overwrite was explicitly requested,
+and remove temporary output on failure.
+
+Status:
+
+```text
+MANDATORY — PHASE 7 COMPLETE
 ```
 
 ---
@@ -1025,6 +1125,11 @@ Status:
 ```text
 MANDATORY
 ```
+
+`makegame` targets the .NET 8 Windows Desktop runtime and uses Windows WPF/WIC
+for PNG decoding. This is a package-builder dependency only. The generated DOS
+game executable gains no .NET dependency and remains the native DOSBox Pure
+Standalone runtime.
 
 ---
 

@@ -1,2 +1,5 @@
 # Local disposable build and runtime test artifacts
 /work/
+/tools/makegame/bin/
+/tools/makegame/obj/
+/tools/makegame/publish/

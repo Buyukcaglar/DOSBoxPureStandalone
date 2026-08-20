@@ -371,7 +371,13 @@ The embedded base archive must continue to be passed only as the underlay. The e
 
 ## 6.3 Confirmed startup behavior
 
-After mounting drive C, `init_dosbox()` checks the combined drive for `DOSBOX.BAT`. If present, it adds `DOSBOX.BAT` to the generated autoexec sequence. Otherwise, normal Pure Menu and auto-start behavior applies.
+After mounting drive C, `init_dosbox()` first checks for a validated embedded
+metadata startup path. A custom `.EXE`, `.COM` or `.BAT` is added to the
+generated in-memory autoexec sequence and followed by top-shell `exit` so the
+dedicated executable closes after the program returns without consulting Pure
+Menu's single-executable/autoboot completion heuristic. If metadata uses
+the default `DOSBOX.BAT`, the existing combined-drive lookup and batch startup
+path is retained. Otherwise, normal Pure Menu and auto-start behavior applies.
 
 Because the lookup is performed through the mounted DOS drive, `DOSBOX.BAT` will continue to work when the base ZIP is memory-backed.
 
@@ -487,7 +493,8 @@ Each generated executable contains a small JSON metadata structure in
   "title": "Duke Nukem 3D",
   "startup": "DOSBOX.BAT",
   "archive_resource": 101,
-  "archive_identity": "<fnv1a64>-<size-hex>"
+  "archive_identity": "<fnv1a64>-<size-hex>",
+  "default_config_resource": 103
 }
 ```
 
@@ -495,7 +502,8 @@ The archive and metadata are separate PE resources. `package_id` is stable
 package identity and determines persistence; `archive_identity` changes with
 the linked archive and guards against an incomplete resource update. The
 runtime reads metadata directly from the PE mapping and does not reconstruct
-it as a physical file.
+it as a physical file. `default_config_resource` is emitted only when the
+package builder embeds a default DOSBox Pure configuration.
 
 Additional optional fields may include:
 
@@ -542,7 +550,7 @@ Mount embedded archive
 Attach writable overlay
         |
         v
-Execute DOSBOX.BAT
+Execute metadata startup target
         |
         v
 Game starts
@@ -550,7 +558,7 @@ Game starts
 
 No DOSBox file-selection UI should normally appear.
 
-The recommended game archive contains:
+The recommended game archive either contains:
 
 ```text
 DOSBOX.BAT
@@ -566,6 +574,10 @@ exit
 ```
 
 The exact startup script is game-specific.
+
+For archives without `DOSBOX.BAT`, metadata can instead name a safe relative
+`.EXE`, `.COM` or `.BAT` that exists inside the mounted archive. The runtime
+generates the command in memory and does not modify or reconstruct the archive.
 
 ## 10.1 Dedicated embedded-package presentation
 
@@ -644,6 +656,8 @@ PE headers
     +-- PACKAGE_METADATA
     |
     +-- GAME_ARCHIVE
+    |
+    +-- DEFAULT_CONFIG (optional)
 ```
 
 The game archive should preferably be appended as an RCDATA resource during the initial implementation.
@@ -662,7 +676,7 @@ The first implementation should favor simplicity and maintainability over exotic
 
 # 13. Packaging Tool
 
-The long-term project should contain a separate packager.
+Phase 7 provides a separate .NET 8 Windows packager under `tools/makegame`.
 
 Conceptual usage:
 
@@ -682,25 +696,71 @@ Example project directory:
 package\
   package.json
   game.dosz
-  game.ico
+  game-icon.png
+  DOSBoxPure.defaults.cfg
+  DOSBoxPure.exe
 ```
 
 Example command:
 
 ```text
-makegame.exe package\ output\GAME.EXE
+makegame.exe package\package.json
 ```
 
-The packager should:
+The packager:
 
 1. copy a clean DOSBox Pure runtime template
 2. embed the DOSZ/ZIP archive
 3. embed package metadata
-4. embed application icon
+4. optionally decode PNG and embed a multi-size Windows application icon
 5. update PE version information
-6. generate the final executable
+6. optionally embed a complete default `DOSBoxPure.cfg` as resource 103
+7. reload and verify the generated executable before moving it into place
 
-Eventually the packager may support compression and validation.
+Archive validation reads every ZIP member, rejects unsafe or duplicate paths,
+and requires the resolved startup file to exist. Startup resolves from CLI,
+manifest, reserved defaults-JSON `package_startup`, then root `DOSBOX.BAT`.
+Input archive bytes are stored directly as resource 101; packaging does not
+extract them.
+
+The PNG converter preserves aspect ratio and centers rectangular images on a
+transparent square. It generates 16, 24, 32, 48, 64, 128 and 256-pixel PNG
+icon frames, updates `RT_ICON` and the `ZL` `RT_GROUP_ICON`, and verifies that
+Windows can extract the result.
+
+The optional config is validated as a flat JSON object with string values,
+normalized to UTF-8 without a BOM and embedded as resource 103. At runtime it
+is parsed in place and stored in a separate fallback layer:
+
+```text
+ConfigOverrides        dedicated-package invariants
+        >
+persistent settings    user choices under the package persistence path
+        >
+ConfigDefaults         immutable resource 103
+        >
+core defaults
+```
+
+This permits a package author to supply every DOSBox Pure option recognized by
+the bundled runtime without hardcoding a growing option list in the builder.
+The reserved `package_startup` value is removed before resource 103 is written
+and promoted into metadata only when CLI and manifest startup are absent.
+Other path and content selection remains controlled by the runtime rather than
+the defaults layer.
+
+The builder can merge common presentation options without a separate config:
+
+```text
+--window-mode windowed|fullscreen  -> screen_fullscreen false|true
+--scanlines                        -> interface_crtfilter 1, interface_crtscanline 3
+--crt-filter                       -> interface_crtfilter 2, interface_crtscanline 3
+```
+
+CLI presentation values replace matching config-file values before resource
+103 is serialized. When no window value is supplied by either source, the
+runtime's windowed default remains in effect. Scanlines-only and full CRT mode
+are mutually exclusive; the latter already includes scanlines.
 
 ---
 
@@ -989,7 +1049,8 @@ tamper-resistance mechanism. A package update retains `package_id` but updates
 The optional `title` is validated as non-empty UTF-8 without control characters
 and is limited to 256 bytes. It supplies both the initial window title and the
 title retained after content loading. The optional `startup` value defaults to
-`DOSBOX.BAT`; version 1 supports only that existing DOSBox Pure startup path.
+`DOSBOX.BAT`; Phase 7 extends format version 1 to safe archive-relative `.EXE`,
+`.COM` and `.BAT` targets that the builder verifies against archive contents.
 
 Missing metadata retains Phase 3/4 compatibility by selecting
 `archive-<fnv1a64>-<size-hex>`. A present but empty, oversized, malformed,
@@ -1001,9 +1062,45 @@ Release validation covered the metadata package path and title, a changed
 archive retaining the same package ID, the missing-metadata fallback, unsafe
 package-ID rejection and archive/metadata mismatch rejection.
 
-## Phase 7
+## Phase 7 — completed
 
-Create the package builder.
+The `makegame` tool now supports manifest and direct CLI modes, safe output
+replacement, validation-only runs, archive/metadata/config resources, PNG icon
+conversion and Windows version resources. The runtime accepts optional
+metadata field `default_config_resource: 103`, bounds the config at 1 MiB,
+validates safe keys and string values, and applies the values below persisted
+user settings.
+
+End-to-end validation packaged the license-safe Phase 3 archive with eight
+default values, a non-square PNG, Unicode title and custom version data. The
+generated executable exposed the custom title and version fields, Windows
+successfully extracted its icon, resource 103 loaded eight defaults, the
+900x600 default produced a 916x639 decorated window, and a persisted 700x500
+override produced a 716x539 decorated window. The game exited with code 0 and
+wrote its normal package-specific overlay.
+
+Startup-target validation also packaged the Dune II archive, which has no
+`DOSBOX.BAT`, using both explicit `--startup DUNE2.EXE` and defaults-only
+`package_startup`. The generated icon-bearing package opened a `Dune II`
+window, reported `Program: DUNE2`, and loaded the three remaining emulator
+defaults. A missing startup declaration and a nonexistent target were rejected;
+the existing `DOSBOX.BAT` smoke package continued to execute and exit with code
+0.
+
+Automatic-shutdown regression validation used metadata-selected `START.BAT`
+without an `exit` command. The batch returned normally after persisting
+`RESULT.OK`; the generated top-shell `exit` then closed the process with code 0
+in 1.12 seconds without key input. This specifically covers archives with no
+root `DOSBOX.BAT` and prevents the Pure Menu completion prompt.
+
+Presentation-switch validation confirmed that `--window-mode windowed
+--scanlines` replaced conflicting fullscreen, CRT mode 5 and scanline intensity
+8 config values with `screen_fullscreen=false`, CRT mode 1 and intensity 3,
+while preserving an unrelated memory setting. `--window-mode fullscreen
+--crt-filter` produced fullscreen, CRT mode 2 and intensity 3. Explicit
+windowed-only output contained one default, and a package without CLI or config
+presentation values contained no resource 103. All four packages loaded the
+expected defaults, executed their metadata startup and exited with code 0.
 
 ## Phase 8
 

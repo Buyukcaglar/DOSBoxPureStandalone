@@ -20,13 +20,13 @@ The embedded game package is accessed directly from memory and is **never extrac
 
 # Project Status
 
-Phase 0 baseline validation, Phase 1 content-loading analysis, Phase 2 memory-backed loading, Phase 3 PE-resource loading, Phase 4 persistent overlays, Phase 5 automatic startup and Phase 6 package metadata are complete as of 2026-08-20.
+Phase 0 baseline validation, Phase 1 content-loading analysis, Phase 2 memory-backed loading, Phase 3 PE-resource loading, Phase 4 persistent overlays, Phase 5 automatic startup, Phase 6 package metadata and Phase 7 package generation are complete as of 2026-08-20.
 
 Phase 3 embeds a license-safe smoke DOSZ as Windows `RCDATA`. When the executable starts without an explicit content path, Unleashed locates the resource with the Windows resource APIs and passes its memory-mapped pointer directly into the Phase 2 `memoryFile` path.
 
 The Release executable continued to mount and execute the embedded DOSZ while the build-source `.dosz` was temporarily absent. Its `DOSBOX.BAT` wrote `PHASE3.OK`, and the existing union drive persisted the result in `embedded.pure.zip`. Explicit external content and the Phase 2 `-memory-archive` mode remain functional.
 
-Phase 6 adds bounded, versioned metadata as a second PE `RCDATA` resource. Its stable human-defined `package_id` now selects persistence, its title brands the application window, and its archive identity prevents stale metadata from being paired with a different game archive. The next milestone is Phase 7: create the package-builder tool.
+Phase 7 adds the `makegame` command-line builder. It validates and embeds a selected ZIP/DOSZ, generates matching metadata, converts an optional PNG into multi-size Windows application-icon resources, updates Windows version information, and can embed a complete `DOSBoxPure.cfg` as package defaults. The next milestone is Phase 8 compatibility testing.
 
 ---
 
@@ -44,7 +44,7 @@ The final application should support:
 - persistent DOS save games
 - DOSBox Pure writable overlays
 - embedded ISO/CUE/BIN/IMG/VHD content
-- automatic `DOSBOX.BAT` startup
+- automatic configured `.EXE`, `.COM` or `.BAT` startup
 - game-specific icon and metadata
 - automated executable generation
 
@@ -187,7 +187,7 @@ This avoids creating a new libretro frontend.
 Expected layout:
 
 ```text
-DOSBoxPureSingleExe/
+DOSBoxPureStandalone/
 │
 ├── AGENTS.md
 ├── README.md
@@ -203,6 +203,7 @@ DOSBoxPureSingleExe/
 ├── packaging/
 │
 └── tools/
+    └── makegame/
 ```
 
 ## `dosbox-pure-unleashed`
@@ -238,7 +239,8 @@ Reserved for package templates, resource definitions and related files.
 
 ## `tools`
 
-Reserved for future build tools such as the executable packager.
+Contains the Phase 7 `makegame` executable packager, its Visual Studio/.NET
+project, documentation and example manifest/default configuration.
 
 ---
 
@@ -472,7 +474,7 @@ DOSBoxPure.exe -memory-archive "C:\Games\game.zip"
 
 An explicit content path takes precedence over the embedded resource. The first command uses the original file-backed path, and the second uses the Phase 2 external-file-to-RAM path.
 
-Phase 3 did not provide package metadata or a final save location. Phase 4 supplied deterministic archive-derived package identity and the final persistence-root behavior; Phase 6 now replaces that interim identity with a human-defined metadata `package_id` and applies the metadata display title. A package-builder tool remains Phase 7 work. The Process Monitor result confirms no extraction for the development fixture and captured build; broader title and image-format compatibility remains a later testing phase.
+Phase 3 did not provide package metadata or a final save location. Phase 4 supplied deterministic archive-derived package identity and the final persistence-root behavior; Phase 6 replaces that interim identity with a human-defined metadata `package_id` and applies the metadata display title. Phase 7 now automates resource and metadata generation through `makegame`. The Process Monitor result confirms no extraction for the development fixture and captured build; broader title and image-format compatibility remains Phase 8 testing work.
 
 ---
 
@@ -533,7 +535,7 @@ launch retained the original adjacent `saves` and `system` behavior.
 
 The generated executable should start the configured DOS title immediately.
 
-Packages can use:
+Packages can use a root startup script:
 
 ```text
 DOSBOX.BAT
@@ -547,6 +549,12 @@ cd GAME
 GAME.EXE
 exit
 ```
+
+Alternatively, Phase 7 metadata can select an archive-relative `.EXE`, `.COM`
+or `.BAT` directly. The runtime adds the selected command followed by `exit` to
+the generated in-memory autoexec sequence; it does not create a physical batch
+file. Returning from the selected program therefore closes the dedicated
+standalone executable instead of opening the Pure Menu completion prompt.
 
 No file-selection UI should appear for normal packaged games.
 
@@ -600,10 +608,11 @@ using the existing `<fnv1a64>-<size-hex>` identity. This is a packaging
 consistency check, not a cryptographic signature; a builder must update it when
 the archive changes while retaining the stable `package_id`.
 
-The optional UTF-8 `title` becomes the native application window title. The
-optional `startup` field defaults to `DOSBOX.BAT`; format version 1 currently
-accepts only `DOSBOX.BAT`, preserving the startup path already implemented by
-DOSBox Pure.
+Phase 7-generated metadata may additionally use `default_config_resource: 103`
+to identify an in-memory package-default configuration. The optional UTF-8
+`title` becomes the native application window title. The optional `startup`
+field defaults to `DOSBOX.BAT` and may identify a safe archive-relative
+`.EXE`, `.COM` or `.BAT` file.
 
 If resource `102` is absent, Phase 3/4 compatibility is preserved through the
 archive-derived `archive-<fnv1a64>-<size-hex>` package ID. If metadata is
@@ -620,43 +629,97 @@ persistence root was created.
 
 ---
 
-## Phase 7 — Package Builder
+## Phase 7 — Package Builder (complete)
 
-Create a standalone packaging tool.
-
-Possible interface:
+The .NET 8 Windows tool is located at:
 
 ```text
-makegame.exe game.dosz GAME.EXE
+tools\makegame\makegame.csproj
 ```
 
-or:
+Open the project in Visual Studio 2026 or build it with:
+
+```powershell
+dotnet build .\tools\makegame\makegame.csproj -c Release
+```
+
+Manifest packaging:
 
 ```text
 makegame.exe package.json
 ```
 
-Conceptually:
+Direct packaging:
 
-```text
-DOSBoxPureTemplate.exe
-        +
-game.dosz
-        +
-package.json
-        +
-game.ico
-        =
-GAME.EXE
+```powershell
+makegame.exe game.dosz GAME.EXE --template DOSBoxPure.exe `
+  --package-id com.example.game --title "Example Game" `
+  --startup GAME.EXE --window-mode fullscreen --crt-filter
 ```
 
-The builder should eventually support:
+The builder performs:
 
-- embedded archive
-- metadata
-- custom icon
-- Windows version resources
-- package validation
+```text
+validated runtime template
+  + validated ZIP/DOSZ and startup target
+  + generated package metadata
+  + optional PNG-derived Windows icon set
+  + optional DOSBoxPure.cfg defaults
+  + generated Windows version resource
+  -> one verified GAME.EXE
+```
+
+PNG input is decoded and letterboxed without distortion into 16, 24, 32, 48,
+64, 128 and 256-pixel `RT_ICON` frames. The `ZL` application icon group is
+replaced and Windows icon extraction is used to verify the result.
+
+The optional default config is the flat JSON format written by DOSBox Pure
+Unleashed. It can carry the full recognized option set, including memory,
+cycles, emulated graphics hardware, fullscreen, scaling, scanlines and CRT
+filter parameters. Resource `103` is parsed directly from the executable and
+is never reconstructed on disk. Its precedence is:
+
+```text
+dedicated-package safety overrides
+  > persisted user settings
+  > embedded package defaults
+  > built-in defaults
+```
+
+Therefore the packaged configuration supplies first-launch defaults while
+later user changes remain effective.
+
+Frequently used presentation defaults are also available directly on the
+command line:
+
+```text
+--window-mode windowed|fullscreen
+--scanlines
+--crt-filter
+```
+
+Windowed is the native default when neither CLI nor defaults JSON specifies a
+mode. `--scanlines` selects scanlines-only mode with normal gaps;
+`--crt-filter` selects TV-style CRT phosphors with normal scanlines. The two
+effect flags are mutually exclusive, and explicit CLI values override matching
+values in `--config`.
+
+The defaults JSON may also contain the reserved builder directive
+`"package_startup": "GAME\\GAME.EXE"`. It is removed from the embedded option
+set and used only when neither `--startup` nor manifest `startup` was supplied.
+If no startup is specified through those three mechanisms, the builder retains
+the root-level `DOSBOX.BAT` requirement. In every case the resolved target must
+exist inside the archive.
+
+The tool also validates safe archive paths, duplicate entries, readable ZIP
+contents, metadata limits, config key/value structure, PNG decoding and PE
+resource output. It writes through a temporary executable beside the requested
+output and moves it into place only after resource verification. Existing
+output requires `--overwrite`; `--validate-only` performs all input checks
+without generating a package.
+
+See [tools/makegame/README.md](tools/makegame/README.md) for the complete
+manifest schema, configuration examples and publishing command.
 
 ---
 
@@ -669,13 +732,15 @@ Duke3DPackage\
 │
 ├── package.json
 ├── duke3d.dosz
-└── duke3d.ico
+├── duke3d.png
+├── DOSBoxPure.defaults.cfg
+└── DOSBoxPure.exe
 ```
 
 Build command:
 
 ```text
-makegame.exe Duke3DPackage\
+makegame.exe Duke3DPackage\package.json
 ```
 
 Output:
