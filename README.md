@@ -18,9 +18,11 @@ The embedded game package is accessed directly from memory and is **never extrac
 
 # Project Status
 
-Early development / architecture stage.
+Phase 0 baseline validation and Phase 1 content-loading analysis are complete as of 2026-08-20.
 
-The initial work focuses on understanding and modifying DOSBox Pure's archive-loading path so ZIP/DOSZ packages can be backed by memory rather than by a physical filename.
+Source inspection confirmed that the ZIP subsystem already reads through the generic `DOS_File` interface. The physical filename is required only when `zipDrive::MountWithDependencies()` opens the outer archive and wraps it in `rawFile`.
+
+The current milestone is Phase 2: prove that an ordinary external ZIP can be loaded into RAM and mounted through a read-only memory-backed `DOS_File` without changing existing ZIP, overlay, startup or internal disk-image behavior.
 
 ---
 
@@ -293,13 +295,13 @@ Do not begin the memory-backed archive work until a clean baseline build is conf
 
 # Development Roadmap
 
-## Phase 0 — Baseline Build
+## Phase 0 — Baseline Build (complete)
 
 Build and test unmodified DOSBox Pure Unleashed.
 
 ---
 
-## Phase 1 — Content Loading Analysis
+## Phase 1 — Content Loading Analysis (complete)
 
 Trace how a game archive moves through the system.
 
@@ -322,9 +324,11 @@ Identify exactly where the physical filename becomes required.
 
 No major source changes should be made during this phase.
 
+The completed trace identified `zipDrive::MountWithDependencies()` as the physical-file boundary and the existing `DOS_File` interface as the smallest practical memory-backed integration point. Detailed findings are recorded in `docs/architecture.md`.
+
 ---
 
-## Phase 2 — Memory-Backed Archive Proof of Concept
+## Phase 2 — Memory-Backed Archive Proof of Concept (next)
 
 Start with an ordinary external ZIP.
 
