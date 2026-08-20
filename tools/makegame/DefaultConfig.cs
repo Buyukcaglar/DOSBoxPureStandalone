@@ -73,6 +73,12 @@ internal static partial class DefaultConfig
             SetSetting(settings, "interface_crtfilter", "2");
             SetSetting(settings, "interface_crtscanline", "3");
         }
+        if (enableScanlines || enableCrtFilter)
+        {
+            SetSetting(settings, "interface_crtblur", "7");
+            SetSetting(settings, "interface_crtcurvature", "0");
+            SetSetting(settings, "interface_crtcorner", "0");
+        }
 
         if (settings.Count == 0) return new(null, 0, packageStartup);
 

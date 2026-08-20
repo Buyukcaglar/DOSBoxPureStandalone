@@ -700,9 +700,10 @@ command line:
 
 Windowed is the native default when neither CLI nor defaults JSON specifies a
 mode. `--scanlines` selects scanlines-only mode with normal gaps;
-`--crt-filter` selects TV-style CRT phosphors with normal scanlines. The two
-effect flags are mutually exclusive, and explicit CLI values override matching
-values in `--config`.
+`--crt-filter` selects TV-style CRT phosphors with normal scanlines. Both flags
+also select the sharpest blur setting and disable curvature and rounded corners.
+The two effect flags are mutually exclusive, and explicit CLI values override
+matching values in `--config`.
 
 The defaults JSON may also contain the reserved builder directive
 `"package_startup": "GAME\\GAME.EXE"`. It is removed from the embedded option

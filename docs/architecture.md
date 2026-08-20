@@ -753,8 +753,12 @@ The builder can merge common presentation options without a separate config:
 
 ```text
 --window-mode windowed|fullscreen  -> screen_fullscreen false|true
---scanlines                        -> interface_crtfilter 1, interface_crtscanline 3
---crt-filter                       -> interface_crtfilter 2, interface_crtscanline 3
+--scanlines                        -> interface_crtfilter 1, interface_crtscanline 3,
+                                      interface_crtblur 7, interface_crtcurvature 0,
+                                      interface_crtcorner 0
+--crt-filter                       -> interface_crtfilter 2, interface_crtscanline 3,
+                                      interface_crtblur 7, interface_crtcurvature 0,
+                                      interface_crtcorner 0
 ```
 
 CLI presentation values replace matching config-file values before resource
@@ -1093,14 +1097,15 @@ without an `exit` command. The batch returned normally after persisting
 in 1.12 seconds without key input. This specifically covers archives with no
 root `DOSBOX.BAT` and prevents the Pure Menu completion prompt.
 
-Presentation-switch validation confirmed that `--window-mode windowed
---scanlines` replaced conflicting fullscreen, CRT mode 5 and scanline intensity
-8 config values with `screen_fullscreen=false`, CRT mode 1 and intensity 3,
-while preserving an unrelated memory setting. `--window-mode fullscreen
---crt-filter` produced fullscreen, CRT mode 2 and intensity 3. Explicit
-windowed-only output contained one default, and a package without CLI or config
-presentation values contained no resource 103. All four packages loaded the
-expected defaults, executed their metadata startup and exited with code 0.
+Presentation-switch validation originally confirmed that explicit windowed-only
+output contained one default, a package without CLI or config presentation
+values contained no resource 103, and all four presentation variants loaded
+their defaults, executed metadata startup and exited with code 0. After adding
+the shared CRT appearance defaults, two further packages were generated from a
+config containing conflicting CRT values. Direct inspection of resource 103
+confirmed that `--scanlines` produced CRT mode 1 and `--crt-filter` produced CRT
+mode 2; both produced scanline intensity 3, sharpness 7, curvature 0 and rounded
+corners 0 while preserving an unrelated memory setting.
 
 ## Phase 8
 

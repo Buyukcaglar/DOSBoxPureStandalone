@@ -1063,9 +1063,10 @@ hand-edited config file:
 
 Windowed is the default when neither CLI nor config specifies a mode.
 `--scanlines` maps to scanlines-only mode with normal intensity;
-`--crt-filter` maps to TV-style phosphors with normal scanlines. These effect
-flags are mutually exclusive. Explicit CLI values override matching values
-from the defaults JSON before resource 103 is generated.
+`--crt-filter` maps to TV-style phosphors with normal scanlines. Both effect
+flags must also set blur/sharpness to Sharpest and disable curvature and rounded
+corners. These effect flags are mutually exclusive. Explicit CLI values override
+matching values from the defaults JSON before resource 103 is generated.
 
 Status:
 

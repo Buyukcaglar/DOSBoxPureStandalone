@@ -119,8 +119,8 @@ internal sealed class CommandLine
         Console.WriteLine("  --icon <path>         PNG converted to multi-size Windows icon resources");
         Console.WriteLine("  --config <path>       DOSBoxPure.cfg JSON embedded as package defaults");
         Console.WriteLine("  --window-mode <mode>  Startup mode: windowed (default) or fullscreen");
-        Console.WriteLine("  --scanlines           Enable scanlines-only CRT mode with normal gaps");
-        Console.WriteLine("  --crt-filter          Enable TV-style CRT filter with normal scanlines");
+        Console.WriteLine("  --scanlines           Scanlines; sharpest image, no curvature/corners");
+        Console.WriteLine("  --crt-filter          TV CRT; sharpest image, no curvature/corners");
         Console.WriteLine("  --validate-only       Validate inputs without producing an executable");
         Console.WriteLine("  --overwrite           Replace an existing output executable");
     }

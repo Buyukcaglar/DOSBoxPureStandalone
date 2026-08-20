@@ -93,8 +93,8 @@ The builder exposes common first-launch presentation choices directly:
 ```text
 --window-mode windowed     Start windowed
 --window-mode fullscreen   Start fullscreen
---scanlines                Scanlines only, with normal gap intensity
---crt-filter               TV-style CRT phosphors with normal scanlines
+--scanlines                Scanlines only, sharpest, without curvature/corners
+--crt-filter               TV-style CRT, sharpest, without curvature/corners
 ```
 
 If neither the command line nor the supplied defaults JSON specifies
@@ -104,10 +104,10 @@ neither a CLI effect flag nor corresponding config value is supplied.
 `--scanlines` and `--crt-filter` are mutually exclusive because the full CRT
 filter already includes scanlines. Their generated settings are:
 
-| CLI option | `interface_crtfilter` | `interface_crtscanline` |
-| --- | --- | --- |
-| `--scanlines` | `1` (Only Scanlines) | `3` (Normal gaps) |
-| `--crt-filter` | `2` (TV style phosphors) | `3` (Normal gaps) |
+| CLI option | CRT mode | Scanlines | Blur/sharpness | Curvature | Rounded corner |
+| --- | --- | --- | --- | --- | --- |
+| `--scanlines` | `1` (Only Scanlines) | `3` (Normal gaps) | `7` (Sharpest) | `0` (Disabled) | `0` (Disabled) |
+| `--crt-filter` | `2` (TV style phosphors) | `3` (Normal gaps) | `7` (Sharpest) | `0` (Disabled) | `0` (Disabled) |
 
 Explicit CLI presentation options override matching values loaded through
 `--config`. They remain package defaults: persisted user settings still take
