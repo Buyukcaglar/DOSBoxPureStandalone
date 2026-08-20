@@ -1,6 +1,8 @@
 # README.md
 
-# DOSBox Pure Single-Executable
+> **AI assistance disclaimer:** This project has been developed with assistance from OpenAI ChatGPT and Codex. AI was used for upstream code analysis, implementation, documentation, build automation and test support. Although the generated changes are reviewed and tested, AI-assisted work may still contain errors or compatibility issues. Users should independently validate the software for their intended use and report reproducible problems through the project's GitHub Issues page.
+
+# DOSBox Pure Standalone
 
 A downstream DOSBox Pure project for packaging a complete DOS game, DOSBox runtime, configuration and optional disk images into a **single standalone Windows executable**.
 
