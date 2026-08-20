@@ -477,19 +477,25 @@ This allows the outer executable to be renamed without losing save-game associat
 
 # 9. Package Metadata
 
-Each generated executable should contain a small metadata structure.
-
-Suggested fields:
+Each generated executable contains a small JSON metadata structure in
+`IDR_EMBEDDED_METADATA` (`RCDATA`, numeric resource 102). Format version 1 is:
 
 ```json
 {
   "format_version": 1,
   "package_id": "com.example.duke3d",
   "title": "Duke Nukem 3D",
-  "archive_resource": "IDR_GAME_ARCHIVE",
-  "startup": "DOSBOX.BAT"
+  "startup": "DOSBOX.BAT",
+  "archive_resource": 101,
+  "archive_identity": "<fnv1a64>-<size-hex>"
 }
 ```
+
+The archive and metadata are separate PE resources. `package_id` is stable
+package identity and determines persistence; `archive_identity` changes with
+the linked archive and guards against an incomplete resource update. The
+runtime reads metadata directly from the PE mapping and does not reconstruct
+it as a physical file.
 
 Additional optional fields may include:
 
@@ -898,23 +904,23 @@ The fixture's no-extraction and internal floppy-image checks are complete. Broad
 ## Phase 4 — completed
 
 Dedicated embedded packages now initialize persistence before the core is
-loaded. The frontend derives an interim identity from the FNV-1a 64-bit hash
-and byte size of the PE resource:
+loaded. Packages with Phase 6 metadata use the human-defined `package_id`.
+When metadata is absent for compatibility, the frontend derives an identity
+from the FNV-1a 64-bit hash and byte size of the PE resource:
 
 ```text
 archive-<fnv1a64>-<size-hex>
 ```
 
-This prevents different embedded archives from sharing an overlay and remains
-stable when the executable is renamed. Phase 6 metadata will replace this
-content-derived identity with the package's human-defined `package_id`, which
-will also remain stable when archive content is updated.
+This prevents different legacy embedded archives from sharing an overlay and
+remains stable when the executable is renamed. The archive-derived identity is
+only compatibility behavior when resource `IDR_EMBEDDED_METADATA` is absent.
 
 The primary layout is:
 
 ```text
-%LOCALAPPDATA%\DOSBoxPureStandalone\<archive-derived-id>\embedded.pure.zip
-%LOCALAPPDATA%\DOSBoxPureStandalone\<archive-derived-id>\DOSBoxPure.cfg
+%LOCALAPPDATA%\DOSBoxPureStandalone\<package_id>\embedded.pure.zip
+%LOCALAPPDATA%\DOSBoxPureStandalone\<package_id>\DOSBoxPure.cfg
 %LOCALAPPDATA%\DOSBoxPureStandalone\system\
 ```
 
@@ -949,17 +955,60 @@ Automatic embedded-package presentation now:
 
 Validation used the license-safe Phase 3 smoke package and the local Dune II test package. The clean smoke run exited by itself with code `0` and did not emit the top-shell warning. Visual inspection of the Dune II build found its Westwood logo to be the first exposed application frame.
 
-## Phase 6
+## Phase 6 — completed
 
-Create the package builder.
+The Windows executable now embeds package JSON as `IDR_EMBEDDED_METADATA`, a
+second `RCDATA` resource independent of `IDR_EMBEDDED_ARCHIVE`. Startup reads
+at most 64 KiB directly from the PE-mapped resource and accepts metadata format
+version `1` with this schema:
+
+```json
+{
+  "format_version": 1,
+  "package_id": "org.dosboxpurestandalone.phase3-smoke",
+  "title": "DOSBox Pure Standalone - Phase 3 Smoke Test",
+  "startup": "DOSBOX.BAT",
+  "archive_resource": 101,
+  "archive_identity": "edba7044deb62010-786"
+}
+```
+
+`package_id` is validated as one 1-128 byte ASCII directory component. It may
+contain letters and digits plus interior `.`, `-` and `_` characters, cannot
+be the reserved `system` name, and becomes the package-specific Phase 4
+persistence directory. This makes save identity stable across executable
+renames and archive updates.
+
+`archive_resource` must identify numeric resource `101`. `archive_identity`
+must equal `<fnv1a64>-<size-hex>` for the archive resource currently linked
+into the executable. The identity binds metadata and archive versions and
+catches incomplete resource replacement; it is not an authentication or
+tamper-resistance mechanism. A package update retains `package_id` but updates
+`archive_identity`.
+
+The optional `title` is validated as non-empty UTF-8 without control characters
+and is limited to 256 bytes. It supplies both the initial window title and the
+title retained after content loading. The optional `startup` value defaults to
+`DOSBOX.BAT`; version 1 supports only that existing DOSBox Pure startup path.
+
+Missing metadata retains Phase 3/4 compatibility by selecting
+`archive-<fnv1a64>-<size-hex>`. A present but empty, oversized, malformed,
+unsupported, unsafe or archive-mismatched metadata resource is a fatal package
+error. Validation occurs before persistence initialization, so an unsafe
+`package_id` cannot create or escape the persistence directory.
+
+Release validation covered the metadata package path and title, a changed
+archive retaining the same package ID, the missing-metadata fallback, unsafe
+package-ID rejection and archive/metadata mismatch rejection.
 
 ## Phase 7
 
-Test ISO/CUE/IMG/VHD content.
+Create the package builder.
 
 ## Phase 8
 
-Test multiple representative DOS games.
+Test ZIP/DOSZ, ISO, CUE/BIN, IMG/IMA and VHD content with multiple
+representative DOS games.
 
 ---
 

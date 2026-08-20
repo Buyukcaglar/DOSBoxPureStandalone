@@ -771,6 +771,12 @@ RECOMMENDED
 
 Package metadata should also be stored inside the generated executable.
 
+Phase 6 implementation:
+
+```text
+COMPLETE — IDR_EMBEDDED_METADATA RCDATA, numeric resource 102
+```
+
 Status:
 
 ```text
@@ -799,6 +805,8 @@ Status:
 MANDATORY
 ```
 
+Phase 6 accepts only numeric `format_version` `1`.
+
 ---
 
 ## REQ-META-002 — Package ID
@@ -819,6 +827,11 @@ Status:
 MANDATORY
 ```
 
+The runtime must validate `package_id` as one safe directory component before
+using it below the persistence root. Phase 6 permits 1-128 ASCII bytes made of
+letters and digits with interior `.`, `-` and `_` characters. The reserved
+shared-directory name `system` is not a valid package ID.
+
 ---
 
 ## REQ-META-003 — Display title
@@ -831,6 +844,9 @@ Status:
 DESIRED
 ```
 
+Phase 6 applies a present title to the native window. It must be non-empty,
+valid UTF-8 without control characters and no longer than 256 bytes.
+
 ---
 
 ## REQ-META-004 — Startup configuration
@@ -841,6 +857,44 @@ Status:
 
 ```text
 DESIRED
+```
+
+For format version 1, the field is optional and defaults to `DOSBOX.BAT`.
+Phase 6 rejects other startup values because custom startup paths are not yet
+implemented.
+
+---
+
+## REQ-META-005 — Archive binding
+
+Present metadata must identify the embedded archive resource and must carry an
+identity matching the linked archive bytes. This prevents a resource-update
+workflow from accidentally pairing one game's metadata and persistence ID with
+another game's archive.
+
+Format version 1 uses:
+
+```json
+{
+  "archive_resource": 101,
+  "archive_identity": "<fnv1a64>-<size-hex>"
+}
+```
+
+The identity is a consistency guard, not a cryptographic signature. It must be
+updated when archive content changes while `package_id` remains stable for the
+same package.
+
+Status:
+
+```text
+MANDATORY
+```
+
+Phase 6 implementation status:
+
+```text
+COMPLETE
 ```
 
 ---

@@ -20,13 +20,13 @@ The embedded game package is accessed directly from memory and is **never extrac
 
 # Project Status
 
-Phase 0 baseline validation, Phase 1 content-loading analysis, Phase 2 memory-backed loading, Phase 3 PE-resource loading, Phase 4 persistent overlays and Phase 5 automatic startup are complete as of 2026-08-20.
+Phase 0 baseline validation, Phase 1 content-loading analysis, Phase 2 memory-backed loading, Phase 3 PE-resource loading, Phase 4 persistent overlays, Phase 5 automatic startup and Phase 6 package metadata are complete as of 2026-08-20.
 
 Phase 3 embeds a license-safe smoke DOSZ as Windows `RCDATA`. When the executable starts without an explicit content path, Unleashed locates the resource with the Windows resource APIs and passes its memory-mapped pointer directly into the Phase 2 `memoryFile` path.
 
 The Release executable continued to mount and execute the embedded DOSZ while the build-source `.dosz` was temporarily absent. Its `DOSBOX.BAT` wrote `PHASE3.OK`, and the existing union drive persisted the result in `embedded.pure.zip`. Explicit external content and the Phase 2 `-memory-archive` mode remain functional.
 
-The next milestone is Phase 6: add stable embedded package metadata, including the final human-defined package ID.
+Phase 6 adds bounded, versioned metadata as a second PE `RCDATA` resource. Its stable human-defined `package_id` now selects persistence, its title brands the application window, and its archive identity prevents stale metadata from being paired with a different game archive. The next milestone is Phase 7: create the package-builder tool.
 
 ---
 
@@ -472,7 +472,7 @@ DOSBoxPure.exe -memory-archive "C:\Games\game.zip"
 
 An explicit content path takes precedence over the embedded resource. The first command uses the original file-backed path, and the second uses the Phase 2 external-file-to-RAM path.
 
-Phase 3 did not provide package metadata or a final save location. Phase 4 now supplies deterministic archive-derived package identity and the final persistence-root behavior; Phase 6 will replace the interim identity with a human-defined metadata `package_id`. Custom game branding and a package-builder tool remain later phases. The Process Monitor result confirms no extraction for the development fixture and captured build; broader title and image-format compatibility remains a later testing phase.
+Phase 3 did not provide package metadata or a final save location. Phase 4 supplied deterministic archive-derived package identity and the final persistence-root behavior; Phase 6 now replaces that interim identity with a human-defined metadata `package_id` and applies the metadata display title. A package-builder tool remains Phase 7 work. The Process Monitor result confirms no extraction for the development fixture and captured build; broader title and image-format compatibility remains a later testing phase.
 
 ---
 
@@ -499,8 +499,10 @@ the same child layout. Failure of both locations must produce a clear error.
 
 The embedded archive remains read-only.
 
-Until Phase 6 metadata is available, the standalone frontend derives a
-rename-safe identity from the embedded archive bytes and size:
+Phase 6 packages use the stable human-defined metadata `package_id`. For
+compatibility with Phase 3/4 executables that have no metadata resource, the
+standalone frontend still derives a rename-safe identity from the embedded
+archive bytes and size:
 
 ```text
 archive-<fnv1a64>-<size-hex>
@@ -564,22 +566,57 @@ These defaults are scoped to automatic embedded-resource startup. Explicit exter
 
 ---
 
-## Phase 6 — Package Metadata
+## Phase 6 — Package Metadata (complete)
 
-Add an embedded package description.
-
-Example:
+The executable now embeds a separate JSON package description as Windows
+resource `IDR_EMBEDDED_METADATA` (`RCDATA`, numeric ID `102`). The game archive
+remains the independent `IDR_EMBEDDED_ARCHIVE` resource (`RCDATA`, numeric ID
+`101`). The development fixture is:
 
 ```json
 {
   "format_version": 1,
-  "package_id": "com.example.duke3d",
-  "title": "Duke Nukem 3D",
-  "startup": "DOSBOX.BAT"
+  "package_id": "org.dosboxpurestandalone.phase3-smoke",
+  "title": "DOSBox Pure Standalone - Phase 3 Smoke Test",
+  "startup": "DOSBOX.BAT",
+  "archive_resource": 101,
+  "archive_identity": "edba7044deb62010-786"
 }
 ```
 
-The `package_id` should provide stable identity for save storage.
+The runtime reads the metadata directly from the PE-mapped resource with a
+64 KiB bound and requires a JSON object with `format_version` equal to `1`.
+The `package_id` is a safe single directory component and supplies stable save
+identity at:
+
+```text
+%LOCALAPPDATA%\DOSBoxPureStandalone\<package_id>\
+```
+
+Renaming the executable or updating the embedded archive therefore does not
+disconnect existing saves as long as the package retains its `package_id`.
+`archive_identity` binds this particular metadata payload to the archive bytes
+using the existing `<fnv1a64>-<size-hex>` identity. This is a packaging
+consistency check, not a cryptographic signature; a builder must update it when
+the archive changes while retaining the stable `package_id`.
+
+The optional UTF-8 `title` becomes the native application window title. The
+optional `startup` field defaults to `DOSBOX.BAT`; format version 1 currently
+accepts only `DOSBOX.BAT`, preserving the startup path already implemented by
+DOSBox Pure.
+
+If resource `102` is absent, Phase 3/4 compatibility is preserved through the
+archive-derived `archive-<fnv1a64>-<size-hex>` package ID. If metadata is
+present but malformed, unsafe, unsupported or paired with the wrong archive,
+startup displays an error and exits before creating persistence directories.
+
+Release validation confirmed that the fixture selected
+`org.dosboxpurestandalone.phase3-smoke`, created and reused its valid
+`embedded.pure.zip`, and exposed the metadata title. A resource-updated archive
+with a matching new `archive_identity` reused the same package directory. A
+metadata-free executable used the Phase 4 compatibility ID, while an unsafe
+package ID and an archive/metadata mismatch were both rejected before any
+persistence root was created.
 
 ---
 
