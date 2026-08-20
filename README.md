@@ -18,11 +18,13 @@ The embedded game package is accessed directly from memory and is **never extrac
 
 # Project Status
 
-Phase 0 baseline validation and Phase 1 content-loading analysis are complete as of 2026-08-20.
+Phase 0 baseline validation, Phase 1 content-loading analysis and the Phase 2 memory-archive proof of concept are complete as of 2026-08-20.
 
-Source inspection confirmed that the ZIP subsystem already reads through the generic `DOS_File` interface. The physical filename is required only when `zipDrive::MountWithDependencies()` opens the outer archive and wraps it in `rawFile`.
+Phase 2 adds an opt-in standalone launch mode that reads an external ZIP/DOSZ once into a frontend-owned RAM buffer and passes it to DOSBox Pure through `retro_game_info.data`. The core wraps those bytes in a read-only, bounds-checked `memoryFile` implementation of `DOS_File` and injects it at `zipDrive::MountWithDependencies()`.
 
-The current milestone is Phase 2: prove that an ordinary external ZIP can be loaded into RAM and mounted through a read-only memory-backed `DOS_File` without changing existing ZIP, overlay, startup or internal disk-image behavior.
+The proof of concept mounted an in-memory test ZIP, executed its `DOSBOX.BAT`, wrote `PHASE2.OK` through the existing union drive and persisted that file in the normal `.pure.zip` overlay. Launching the same archive without the opt-in switch also succeeded through the unchanged native-file path.
+
+The next milestone is Phase 3: replace the external-file-to-RAM bootstrap with a Windows PE `RCDATA` resource while preserving the same core memory-source seam.
 
 ---
 
@@ -328,7 +330,7 @@ The completed trace identified `zipDrive::MountWithDependencies()` as the physic
 
 ---
 
-## Phase 2 — Memory-Backed Archive Proof of Concept (next)
+## Phase 2 — Memory-Backed Archive Proof of Concept (complete)
 
 Start with an ordinary external ZIP.
 
@@ -364,6 +366,32 @@ DOSBox Pure ZIP filesystem
 The game should run normally.
 
 This proves that a physical archive file is not required by the archive layer.
+
+Run the Phase 2 mode with:
+
+```powershell
+DOSBoxPure.exe -memory-archive "C:\Games\game.zip"
+```
+
+or:
+
+```powershell
+DOSBoxPure.exe -memory-archive "C:\Games\game.dosz"
+```
+
+In this proof of concept, the standalone frontend performs the one permitted input-file read and owns the RAM buffer for the complete core lifetime. DOSBox Pure receives the original path only as logical metadata for naming, overlays, parent archives and sidecars; the outer ZIP/DOSZ bytes are read through `memoryFile`.
+
+Without `-memory-archive`, ordinary external ZIP/DOSZ loading remains unchanged.
+
+Phase 2 deliberately does not yet include:
+
+- PE resource embedding
+- automatic embedded-package detection
+- stable package metadata or package IDs
+- deterministic `%LOCALAPPDATA%` save paths
+- a package-builder tool
+
+Parent DOSZ archives and DOSC sidecars also remain path-backed during this proof of concept.
 
 ---
 

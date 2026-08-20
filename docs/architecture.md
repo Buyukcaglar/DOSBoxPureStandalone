@@ -186,7 +186,7 @@ DOS_File::Read
 DOS_File::Seek64
 ```
 
-The preferred Phase 2 design is therefore a read-only memory-backed `DOS_File` implementation rather than a new parallel `IDataSource` hierarchy.
+Phase 2 therefore uses a read-only memory-backed `DOS_File` implementation rather than a new parallel `IDataSource` hierarchy.
 
 Conceptually, the implementation needs:
 
@@ -215,6 +215,29 @@ The logical content path must remain separate from the archive byte source. DOSB
 - content-browser state
 
 Memory backing replaces only the physical read source. It does not remove logical path metadata.
+
+## 5.1 Phase 2 implementation
+
+The standalone frontend recognizes:
+
+```text
+-memory-archive <path>
+--memory-archive <path>
+```
+
+For ZIP and DOSZ inputs it:
+
+1. opens the selected external archive
+2. determines its size with 64-bit file operations
+3. reads it once into a frontend-owned `std::vector<Bit8u>`
+4. supplies the stable pointer and length through `retro_game_info.data` and `retro_game_info.size`
+5. keeps the vector alive until after `retro_unload_game()`
+
+The core associates the memory source with the unchanged logical content path. `DBP_Mount()` supplies a new `memoryFile` only when the mounted path matches that association. All other content continues through the original native-file path.
+
+`memoryFile` is non-owning and read-only. It tracks a 64-bit size and cursor, clamps seeks to the available range, bounds-checks reads and rejects writes. Ownership of the `DOS_File` object follows the existing `Zip_Archive` reference-count lifecycle; ownership of the bytes remains with the frontend.
+
+There is no silent fallback to disk-backed mounting when the explicit mode cannot read or validate its input. The frontend reports the failure and exits the load attempt.
 
 ---
 
@@ -312,7 +335,7 @@ Consequently, changing the outer ZIP from `rawFile` to a memory-backed `DOS_File
 
 ## 6.5 Integration boundary
 
-The primary Phase 2 seam is `zipDrive::MountWithDependencies()`, immediately before it constructs `rawFile` for the outer archive.
+The implemented Phase 2 seam is `zipDrive::MountWithDependencies()`, immediately before it would construct `rawFile` for the outer archive. Its optional `DOS_File*` parameter is used only for the initial ZIP/DOSZ. When no source is supplied, the existing `$`-path and `fopen_wrap()` behavior is unchanged.
 
 The standalone `vfs_implementation.cpp` is not the primary archive integration point. It remains relevant to frontend filesystem operations but does not need to be replaced to prove memory-backed ZIP loading.
 
@@ -723,11 +746,9 @@ Confirmed findings:
 
 The source trace identifies a memory-backed `DOS_File` as the smallest practical Phase 2 integration. No runtime behavior was changed during Phase 1.
 
-## Phase 2
+## Phase 2 — completed
 
-Introduce a read-only memory-backed `DOS_File` archive source.
-
-Test using an in-memory copy of a normal game ZIP.
+A read-only memory-backed `DOS_File` archive source was implemented and tested with an in-memory copy of a normal ZIP.
 
 The goal is:
 
@@ -739,6 +760,18 @@ disk ZIP
 ```
 
 This isolates memory-loading changes from PE resource handling.
+
+The automated fixture validation confirmed:
+
+- the frontend loaded the complete external ZIP into RAM
+- the core selected the memory-backed mount path
+- ZIP directory and file reads succeeded
+- `DOSBOX.BAT` executed from the mounted archive
+- a DOS write created `PHASE2.OK`
+- the existing writable overlay persisted it as `phase2-test.pure.zip`
+- launching the same ZIP without the switch continued through the normal path
+
+The proof-of-concept test did not include an internal disk image or Process Monitor capture. Those runtime checks remain required before the later compatibility/no-extraction acceptance claims are complete.
 
 ## Phase 3
 
