@@ -442,6 +442,8 @@ as resource:
 IDR_EMBEDDED_ARCHIVE RCDATA
 ```
 
+The fixture contains `DOSBOX.BAT` plus a generated 1.44 MB FAT12 floppy image named `DISK.IMA`. At startup, the batch file mounts the image from inside the embedded DOSZ, reads `A:\IMAGE.OK`, and writes `PHASE3.IMG` to the normal overlay only when that internal-image read succeeds.
+
 Run the Release executable without arguments to select the embedded archive automatically:
 
 ```powershell
@@ -449,6 +451,15 @@ DOSBoxPure.exe
 ```
 
 The runtime uses the logical path `embedded.dosz` for DOSBox Pure content identity and overlay naming. The build-source DOSZ is not needed after linking; runtime testing succeeded while that file was temporarily moved away.
+
+The 2026-08-20 Release validation produced both fixture sentinels in `saves\embedded.pure.zip`:
+
+```text
+PHASE3.OK   = PHASE3_PE_RESOURCE_OK
+PHASE3.IMG  = PHASE3_INTERNAL_DISK_IMAGE_OK
+```
+
+A Process Monitor capture of that same run contained 64,555 events for `DOSBoxPure.exe` (PID 42060). It recorded no access under `%TEMP%`, `%LOCALAPPDATA%\Temp` or `C:\Windows\Temp`, no physical access to `DISK.IMA`, `IMAGE.OK`, `DOSBOX.BAT` or `embedded.dosz`, and no truncate, rename or delete operations. The only successful application-data `WriteFile` was the expected `saves\embedded.pure.zip`; one additional successful 8-byte write was NVIDIA driver timestamp activity under `C:\ProgramData\NVIDIA Corporation\Drs`.
 
 Development compatibility is preserved:
 
@@ -459,7 +470,7 @@ DOSBoxPure.exe -memory-archive "C:\Games\game.zip"
 
 An explicit content path takes precedence over the embedded resource. The first command uses the original file-backed path, and the second uses the Phase 2 external-file-to-RAM path.
 
-Phase 3 does not yet provide package metadata, a stable package ID, a final save location, custom game branding or a package-builder tool. Process Monitor confirmation also remains required before making the final no-extraction acceptance claim.
+Phase 3 does not yet provide package metadata, a stable package ID, a final save location, custom game branding or a package-builder tool. The Process Monitor result confirms no extraction for this development fixture and captured build; broader title and image-format compatibility remains a later testing phase.
 
 ---
 
