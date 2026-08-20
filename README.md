@@ -18,13 +18,13 @@ The embedded game package is accessed directly from memory and is **never extrac
 
 # Project Status
 
-Phase 0 baseline validation, Phase 1 content-loading analysis and the Phase 2 memory-archive proof of concept are complete as of 2026-08-20.
+Phase 0 baseline validation, Phase 1 content-loading analysis, Phase 2 memory-backed loading and Phase 3 PE-resource loading are complete as of 2026-08-20.
 
-Phase 2 adds an opt-in standalone launch mode that reads an external ZIP/DOSZ once into a frontend-owned RAM buffer and passes it to DOSBox Pure through `retro_game_info.data`. The core wraps those bytes in a read-only, bounds-checked `memoryFile` implementation of `DOS_File` and injects it at `zipDrive::MountWithDependencies()`.
+Phase 3 embeds a license-safe smoke DOSZ as Windows `RCDATA`. When the executable starts without an explicit content path, Unleashed locates the resource with the Windows resource APIs and passes its memory-mapped pointer directly into the Phase 2 `memoryFile` path.
 
-The proof of concept mounted an in-memory test ZIP, executed its `DOSBOX.BAT`, wrote `PHASE2.OK` through the existing union drive and persisted that file in the normal `.pure.zip` overlay. Launching the same archive without the opt-in switch also succeeded through the unchanged native-file path.
+The Release executable continued to mount and execute the embedded DOSZ while the build-source `.dosz` was temporarily absent. Its `DOSBOX.BAT` wrote `PHASE3.OK`, and the existing union drive persisted the result in `embedded.pure.zip`. Explicit external content and the Phase 2 `-memory-archive` mode remain functional.
 
-The next milestone is Phase 3: replace the external-file-to-RAM bootstrap with a Windows PE `RCDATA` resource while preserving the same core memory-source seam.
+The next milestone is Phase 4: move writable overlays to a deterministic package-specific persistence location.
 
 ---
 
@@ -395,7 +395,7 @@ Parent DOSZ archives and DOSC sidecars also remain path-backed during this proof
 
 ---
 
-## Phase 3 — Windows PE Resource
+## Phase 3 — Windows PE Resource (complete)
 
 Embed the game archive into the standalone executable.
 
@@ -429,6 +429,37 @@ GAME.EXE
 ```
 
 No archive copy should be written to disk.
+
+The Visual Studio build currently embeds the license-safe development fixture:
+
+```text
+dosbox-pure-unleashed\embedded\phase3-smoke.dosz
+```
+
+as resource:
+
+```text
+IDR_EMBEDDED_ARCHIVE RCDATA
+```
+
+Run the Release executable without arguments to select the embedded archive automatically:
+
+```powershell
+DOSBoxPure.exe
+```
+
+The runtime uses the logical path `embedded.dosz` for DOSBox Pure content identity and overlay naming. The build-source DOSZ is not needed after linking; runtime testing succeeded while that file was temporarily moved away.
+
+Development compatibility is preserved:
+
+```powershell
+DOSBoxPure.exe "C:\Games\game.zip"
+DOSBoxPure.exe -memory-archive "C:\Games\game.zip"
+```
+
+An explicit content path takes precedence over the embedded resource. The first command uses the original file-backed path, and the second uses the Phase 2 external-file-to-RAM path.
+
+Phase 3 does not yet provide package metadata, a stable package ID, a final save location, custom game branding or a package-builder tool. Process Monitor confirmation also remains required before making the final no-extraction acceptance claim.
 
 ---
 

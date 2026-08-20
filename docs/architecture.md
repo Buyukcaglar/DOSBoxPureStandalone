@@ -139,18 +139,18 @@ The embedded archive remains immutable.
 
 # 4. Embedded Game Storage
 
-The game archive should initially be embedded as a Windows PE resource.
+The Visual Studio build now embeds the development archive as a Windows PE resource.
 
-Recommended resource type:
+Resource type:
 
 ```text
 RCDATA
 ```
 
-Example resource definition:
+Current resource definition:
 
 ```rc
-IDR_GAME_ARCHIVE RCDATA "game.dosz"
+IDR_EMBEDDED_ARCHIVE RCDATA "embedded\\phase3-smoke.dosz"
 ```
 
 At runtime the archive can be accessed using:
@@ -172,6 +172,44 @@ size_t size;
 representing the compressed game archive directly inside the executable image.
 
 No temporary file should be created.
+
+## 4.1 Phase 3 resource loader
+
+On Windows, Unleashed calls:
+
+```text
+FindResourceW
+SizeofResource
+LoadResource
+LockResource
+```
+
+for `IDR_EMBEDDED_ARCHIVE`. The returned pointer addresses the resource bytes mapped with the executable image. It remains valid for the process lifetime and is supplied directly through `retro_game_info.data`; the resource is not copied into the Phase 2 `std::vector`.
+
+The resource is given the logical path:
+
+```text
+embedded.dosz
+```
+
+This retains DOSBox Pure's path-based content identity and currently produces the writable overlay name `embedded.pure.zip`. Phase 4 will replace this development identity with a deterministic package-specific persistence path.
+
+Startup selection is:
+
+```text
+explicit external content path
+        -> preserve normal or -memory-archive behavior
+
+no explicit content path + valid RCDATA
+        -> use embedded memory pointer
+
+no explicit content path + no RCDATA
+        -> preserve configured/default frontend behavior
+```
+
+If the resource exists but is empty or cannot be locked, startup reports an error and returns a failure code. It does not fall back to archive extraction or reconstruction.
+
+Phase 3 validation temporarily moved the build-source `phase3-smoke.dosz` away after linking. The Release executable still mounted the embedded archive, executed its `DOSBOX.BAT` and persisted `PHASE3.OK` through the normal writable overlay. This proves the linked executable does not require the source DOSZ at runtime. Process Monitor confirmation remains outstanding, so the full no-extraction acceptance criterion is not yet claimed.
 
 ---
 
@@ -773,9 +811,9 @@ The automated fixture validation confirmed:
 
 The proof-of-concept test did not include an internal disk image or Process Monitor capture. Those runtime checks remain required before the later compatibility/no-extraction acceptance claims are complete.
 
-## Phase 3
+## Phase 3 — completed
 
-Load the archive from a Windows PE resource.
+The development DOSZ is loaded from a Windows PE `RCDATA` resource.
 
 Replace:
 
@@ -789,7 +827,17 @@ with:
 PE RCDATA -> memory-backed DOS_File
 ```
 
-Verify that no archive file is created on disk.
+Validated behavior:
+
+- Debug and Release x64 builds contain `IDR_EMBEDDED_ARCHIVE`
+- no-argument startup selects the embedded DOSZ automatically
+- `LockResource()` bytes flow directly into the existing memory-backed `DOS_File`
+- `DOSBOX.BAT` executes from the embedded archive
+- `PHASE3.OK` persists in the existing `embedded.pure.zip` overlay
+- the Release executable works while the source DOSZ is absent
+- explicit normal and Phase 2 memory-backed external launches remain functional
+
+Process Monitor verification and internal disk-image coverage remain pending before the final no-extraction and compatibility acceptance claims.
 
 ## Phase 4
 
