@@ -1038,6 +1038,7 @@ such as:
 
 ```text
 screen_fullscreen
+dosbox_pure_aspect_correction
 dosbox_pure_memory_size
 dosbox_pure_cycles
 dosbox_pure_machine
@@ -1057,16 +1058,22 @@ hand-edited config file:
 
 ```text
 --window-mode windowed|fullscreen
+--aspect-ratio off|on|doublescan|padded|padded-doublescan|fill
 --scanlines
 --crt-filter
 ```
 
 Windowed is the default when neither CLI nor config specifies a mode.
+`--aspect-ratio` must map to `dosbox_pure_aspect_correction`; friendly `off`
+and `on` values become the core's `false` and `true` values, while the remaining
+four values are embedded unchanged. The six modes are mutually exclusive, and
+the builder must reject repeated `--aspect-ratio` arguments.
 `--scanlines` maps to scanlines-only mode with normal intensity;
 `--crt-filter` maps to TV-style phosphors with normal scanlines. Both effect
 flags must also set blur/sharpness to Sharpest and disable curvature and rounded
-corners. These effect flags are mutually exclusive. Explicit CLI values override
-matching values from the defaults JSON before resource 103 is generated.
+corners. These effect flags are mutually exclusive. Explicit CLI window,
+aspect-ratio, and effect values override matching values from the defaults JSON
+before resource 103 is generated.
 
 Status:
 

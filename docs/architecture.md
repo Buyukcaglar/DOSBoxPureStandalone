@@ -759,6 +759,9 @@ The builder can merge common presentation options without a separate config:
 
 ```text
 --window-mode windowed|fullscreen  -> screen_fullscreen false|true
+--aspect-ratio off|on              -> dosbox_pure_aspect_correction false|true
+--aspect-ratio doublescan|padded|padded-doublescan|fill
+                                   -> dosbox_pure_aspect_correction with the same value
 --scanlines                        -> interface_crtfilter 1, interface_crtscanline 3,
                                       interface_crtblur 7, interface_crtcurvature 0,
                                       interface_crtcorner 0
@@ -769,8 +772,10 @@ The builder can merge common presentation options without a separate config:
 
 CLI presentation values replace matching config-file values before resource
 103 is serialized. When no window value is supplied by either source, the
-runtime's windowed default remains in effect. Scanlines-only and full CRT mode
-are mutually exclusive; the latter already includes scanlines.
+runtime's windowed default remains in effect. The aspect-ratio switch exposes
+all six mutually exclusive values recognized by the bundled core and is
+accepted at most once. Scanlines-only and full CRT mode are mutually exclusive;
+the latter already includes scanlines.
 
 The distributed Windows x64 package builder is a compressed, self-contained
 .NET 8 single-file publish. It does not depend on a machine-wide .NET runtime.
@@ -1119,6 +1124,13 @@ config containing conflicting CRT values. Direct inspection of resource 103
 confirmed that `--scanlines` produced CRT mode 1 and `--crt-filter` produced CRT
 mode 2; both produced scanline intensity 3, sharpness 7, curvature 0 and rounded
 corners 0 while preserving an unrelated memory setting.
+
+Aspect-ratio switch validation generated one package for each supported mode
+and inspected resource 103 directly. `off` and `on` serialized as `false` and
+`true`; `doublescan`, `padded`, `padded-doublescan`, and `fill` serialized
+unchanged. A package built from a conflicting defaults file confirmed that the
+CLI value replaced only `dosbox_pure_aspect_correction` while preserving an
+unrelated memory setting. An unsupported mode was rejected with exit code 2.
 
 ## Phase 8
 

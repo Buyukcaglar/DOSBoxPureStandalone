@@ -29,7 +29,7 @@ internal static partial class PackageBuilder
     {
         ValidateSpecification(package, overwrite, validateOnly);
         ValidateTemplate(package.TemplatePath);
-        var defaultConfig = DefaultConfig.Load(package.DefaultConfigPath, package.WindowMode, package.EnableScanlines, package.EnableCrtFilter);
+        var defaultConfig = DefaultConfig.Load(package.DefaultConfigPath, package.WindowMode, package.AspectRatio, package.EnableScanlines, package.EnableCrtFilter);
         var startup = NormalizeAndValidateStartup(package.Startup ?? defaultConfig.PackageStartup ?? "DOSBOX.BAT");
         var archiveBytes = ValidateAndReadArchive(package.ArchivePath, startup);
         var archiveIdentity = CalculateArchiveIdentity(archiveBytes);

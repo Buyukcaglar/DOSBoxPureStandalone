@@ -84,19 +84,21 @@ makegame.exe game.dosz GAME.exe `
   --icon game-icon.png `
   --config DOSBoxPure.defaults.cfg `
   --window-mode fullscreen `
+  --aspect-ratio padded `
   --crt-filter
 ```
 
 Use `--validate-only` to validate every input without writing an executable.
 Existing output is protected unless `--overwrite` is supplied.
 
-## Window and display-effect switches
+## Window, aspect-ratio, and display-effect switches
 
 The builder exposes common first-launch presentation choices directly:
 
 ```text
 --window-mode windowed     Start windowed
 --window-mode fullscreen   Start fullscreen
+--aspect-ratio <mode>      Set DOSBox Pure aspect correction
 --scanlines                Scanlines only, sharpest, without curvature/corners
 --crt-filter               TV-style CRT, sharpest, without curvature/corners
 ```
@@ -104,6 +106,18 @@ The builder exposes common first-launch presentation choices directly:
 If neither the command line nor the supplied defaults JSON specifies
 `screen_fullscreen`, startup defaults to windowed. CRT effects remain off when
 neither a CLI effect flag nor corresponding config value is supplied.
+
+`--aspect-ratio` accepts exactly one of the mutually exclusive modes supported
+by the bundled DOSBox Pure core. Repeating the option is an error:
+
+| CLI value | Embedded `dosbox_pure_aspect_correction` value | Behavior |
+| --- | --- | --- |
+| `off` | `false` | Disable aspect correction. |
+| `on` | `true` | Correct aspect ratio with single-scan output. |
+| `doublescan` | `doublescan` | Correct aspect ratio with double-scan output when applicable. |
+| `padded` | `padded` | Pad to 4:3 with single-scan output. |
+| `padded-doublescan` | `padded-doublescan` | Pad to 4:3 with double-scan output when applicable. |
+| `fill` | `fill` | Stretch to fill the window and ignore the content aspect ratio. |
 
 `--scanlines` and `--crt-filter` are mutually exclusive because the full CRT
 filter already includes scanlines. Their generated settings are:
@@ -113,7 +127,7 @@ filter already includes scanlines. Their generated settings are:
 | `--scanlines` | `1` (Only Scanlines) | `3` (Normal gaps) | `7` (Sharpest) | `0` (Disabled) | `0` (Disabled) |
 | `--crt-filter` | `2` (TV style phosphors) | `3` (Normal gaps) | `7` (Sharpest) | `0` (Disabled) | `0` (Disabled) |
 
-Explicit CLI presentation options override matching values loaded through
+Explicit CLI window, aspect-ratio, and effect options override matching values loaded through
 `--config`. They remain package defaults: persisted user settings still take
 precedence on later launches.
 

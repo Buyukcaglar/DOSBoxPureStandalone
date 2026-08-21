@@ -12,6 +12,7 @@ internal sealed class CommandLine
     public string? IconPath { get; private set; }
     public string? DefaultConfigPath { get; private set; }
     public string? WindowMode { get; private set; }
+    public string? AspectRatio { get; private set; }
     public bool EnableScanlines { get; private set; }
     public bool EnableCrtFilter { get; private set; }
     public bool Overwrite { get; private set; }
@@ -43,6 +44,11 @@ internal sealed class CommandLine
                 case "--icon": result.IconPath = ReadValue(args, ref index, argument); break;
                 case "--config": result.DefaultConfigPath = ReadValue(args, ref index, argument); break;
                 case "--window-mode": result.WindowMode = ReadValue(args, ref index, argument).Trim().ToLowerInvariant(); break;
+                case "--aspect-ratio":
+                    if (result.AspectRatio is not null)
+                        throw new PackageBuilderException("--aspect-ratio may be specified only once; its six modes are mutually exclusive.");
+                    result.AspectRatio = ReadValue(args, ref index, argument).Trim().ToLowerInvariant();
+                    break;
                 case "--scanlines": result.EnableScanlines = true; break;
                 case "--crt-filter": result.EnableCrtFilter = true; break;
                 case "--overwrite": result.Overwrite = true; break;
@@ -78,6 +84,8 @@ internal sealed class CommandLine
 
         if (result.WindowMode is not null && result.WindowMode is not ("windowed" or "fullscreen"))
             throw new PackageBuilderException("--window-mode must be 'windowed' or 'fullscreen'.");
+        if (result.AspectRatio is not null && result.AspectRatio is not ("off" or "on" or "doublescan" or "padded" or "padded-doublescan" or "fill"))
+            throw new PackageBuilderException("--aspect-ratio must be 'off', 'on', 'doublescan', 'padded', 'padded-doublescan', or 'fill'.");
         if (result.EnableScanlines && result.EnableCrtFilter)
             throw new PackageBuilderException("--scanlines and --crt-filter are mutually exclusive; the full CRT filter already includes scanlines.");
 
@@ -105,7 +113,8 @@ internal sealed class CommandLine
         Console.WriteLine("  makegame.exe game.dosz GAME.exe --template DOSBoxPureStandAlone.exe");
         Console.WriteLine("      --package-id com.example.game --title \"Example Game\"");
         Console.WriteLine("      [--startup GAME.EXE] [--icon game.png] [--config DOSBoxPure.cfg]");
-        Console.WriteLine("      [--window-mode windowed|fullscreen] [--scanlines|--crt-filter]");
+        Console.WriteLine("      [--window-mode windowed|fullscreen] [--aspect-ratio <mode>]");
+        Console.WriteLine("      [--scanlines|--crt-filter]");
         Console.WriteLine("      [--overwrite]");
         Console.WriteLine();
         Console.WriteLine("Options:");
@@ -119,6 +128,7 @@ internal sealed class CommandLine
         Console.WriteLine("  --icon <path>         PNG converted to multi-size Windows icon resources");
         Console.WriteLine("  --config <path>       DOSBoxPure.cfg JSON embedded as package defaults");
         Console.WriteLine("  --window-mode <mode>  Startup mode: windowed (default) or fullscreen");
+        Console.WriteLine("  --aspect-ratio <mode> off, on, doublescan, padded, padded-doublescan, or fill");
         Console.WriteLine("  --scanlines           Scanlines; sharpest image, no curvature/corners");
         Console.WriteLine("  --crt-filter          TV CRT; sharpest image, no curvature/corners");
         Console.WriteLine("  --validate-only       Validate inputs without producing an executable");

@@ -674,7 +674,7 @@ Direct packaging:
 ```powershell
 makegame.exe game.dosz GAME.EXE --template DOSBoxPureStandAlone.exe `
   --package-id com.example.game --title "Example Game" `
-  --startup GAME.EXE --window-mode fullscreen --crt-filter
+  --startup GAME.EXE --window-mode fullscreen --aspect-ratio padded --crt-filter
 ```
 
 The builder performs:
@@ -714,12 +714,16 @@ command line:
 
 ```text
 --window-mode windowed|fullscreen
+--aspect-ratio off|on|doublescan|padded|padded-doublescan|fill
 --scanlines
 --crt-filter
 ```
 
 Windowed is the native default when neither CLI nor defaults JSON specifies a
-mode. `--scanlines` selects scanlines-only mode with normal gaps;
+mode. `--aspect-ratio` sets `dosbox_pure_aspect_correction`; `off` and `on` map
+to the core's `false` and `true` values, while the other four CLI values map
+directly to their identically named core modes. The six modes are mutually
+exclusive, and repeating `--aspect-ratio` is rejected. `--scanlines` selects scanlines-only mode with normal gaps;
 `--crt-filter` selects TV-style CRT phosphors with normal scanlines. Both flags
 also select the sharpest blur setting and disable curvature and rounded corners.
 The two effect flags are mutually exclusive, and explicit CLI values override

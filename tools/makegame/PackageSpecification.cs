@@ -41,6 +41,7 @@ internal sealed class PackageSpecification
     public string? IconPath { get; init; }
     public string? DefaultConfigPath { get; init; }
     public string? WindowMode { get; init; }
+    public string? AspectRatio { get; init; }
     public bool EnableScanlines { get; init; }
     public bool EnableCrtFilter { get; init; }
     public PackageVersionInfo VersionInfo { get; init; } = new();
@@ -104,6 +105,7 @@ internal sealed class PackageSpecification
             IconPath = iconPath,
             DefaultConfigPath = defaultConfigPath,
             WindowMode = commandLine.WindowMode,
+            AspectRatio = commandLine.AspectRatio,
             EnableScanlines = commandLine.EnableScanlines,
             EnableCrtFilter = commandLine.EnableCrtFilter,
             VersionInfo = manifest.VersionInfo ?? new PackageVersionInfo(),

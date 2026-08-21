@@ -123,6 +123,7 @@ manifest directory.
 | `--icon` | PNG path | Convert a PNG into the packaged application's Windows icon. |
 | `--config` | JSON path | Embed DOSBox Pure defaults from a flat `DOSBoxPure.cfg`-style JSON object. |
 | `--window-mode` | `windowed` or `fullscreen` | Set the first-launch window mode. |
+| `--aspect-ratio` | aspect mode | Set the first-launch DOSBox Pure aspect-correction mode. |
 | `--scanlines` | none | Enable scanlines-only mode with the project's CRT appearance defaults. |
 | `--crt-filter` | none | Enable TV-style CRT filtering and scanlines with the project's appearance defaults. |
 | `--validate-only` | none | Validate all inputs without creating an executable. |
@@ -302,7 +303,7 @@ Windows can extract the result.
 The input must be a decodable PNG. For best results, use square artwork at
 least 256 by 256 pixels with transparency where appropriate.
 
-## Window and CRT options
+## Window, aspect-ratio, and CRT options
 
 ### Windowed
 
@@ -318,6 +319,28 @@ specifies `screen_fullscreen`.
 ```powershell
 --window-mode fullscreen
 ```
+
+### Aspect ratio
+
+```powershell
+--aspect-ratio padded
+```
+
+The option accepts exactly one of the mutually exclusive aspect-correction
+modes supported by the bundled core. Repeating `--aspect-ratio` is rejected:
+
+| CLI value | Generated `dosbox_pure_aspect_correction` value | Effect |
+| --- | --- | --- |
+| `off` | `false` | Disable aspect correction. |
+| `on` | `true` | Correct the aspect ratio with single-scan output. |
+| `doublescan` | `doublescan` | Correct the aspect ratio with double-scan output when applicable. |
+| `padded` | `padded` | Pad output to 4:3 with single-scan output. |
+| `padded-doublescan` | `padded-doublescan` | Pad output to 4:3 with double-scan output when applicable. |
+| `fill` | `fill` | Stretch output to fill the window, ignoring content aspect ratio. |
+
+The CLI value overrides `dosbox_pure_aspect_correction` from `--config` before
+the defaults resource is generated. It remains a first-launch package default,
+so a user's persisted setting takes precedence on later launches.
 
 ### Scanlines only
 
@@ -359,6 +382,7 @@ value must be a JSON string:
 {
   "package_startup": "START.BAT",
   "screen_fullscreen": "true",
+  "dosbox_pure_aspect_correction": "padded",
   "dosbox_pure_memory_size": "32",
   "dosbox_pure_cycles": "26800",
   "dosbox_pure_machine": "svga",
@@ -467,6 +491,7 @@ title is used.
   --icon "C:\Games\Dune2\Dune2.png" `
   --config "C:\Games\Dune2\DOSBoxPure.defaults.cfg" `
   --window-mode fullscreen `
+  --aspect-ratio padded `
   --scanlines
 ```
 
