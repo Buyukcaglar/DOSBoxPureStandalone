@@ -41,7 +41,7 @@ internal sealed class PackageSpecification
     public required string OutputPath { get; init; }
     public string? IconPath { get; init; }
     public string? DefaultConfigPath { get; init; }
-    public string? WindowMode { get; init; }
+    public bool Fullscreen { get; init; }
     public string? AspectRatio { get; init; }
     public string? Cycles { get; init; }
     public string? CpuType { get; init; }
@@ -108,7 +108,7 @@ internal sealed class PackageSpecification
             OutputPath = outputPath,
             IconPath = iconPath,
             DefaultConfigPath = defaultConfigPath,
-            WindowMode = commandLine.WindowMode,
+            Fullscreen = commandLine.Fullscreen,
             AspectRatio = commandLine.AspectRatio,
             Cycles = commandLine.Cycles ?? commandLine.EmulatedPerformanceCycles,
             CpuType = commandLine.CpuType,

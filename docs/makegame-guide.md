@@ -122,7 +122,7 @@ manifest directory.
 | `--startup` | archive path | Select an archive-relative `.EXE`, `.COM`, or `.BAT` startup file. |
 | `--icon` | PNG path | Convert a PNG into the packaged application's Windows icon. |
 | `--config` | JSON path | Embed DOSBox Pure defaults from a flat `DOSBoxPure.cfg`-style JSON object. |
-| `--window-mode` | `windowed` or `fullscreen` | Set the first-launch window mode. |
+| `--fullscreen` | none | Start fullscreen; omission creates a windowed package default. |
 | `--aspect-ratio` | aspect mode | Set the first-launch DOSBox Pure aspect-correction mode. |
 | `--cycles` | cycle mode | Set automatic, maximum, or fixed emulated performance. |
 | `--emu-perf` | named preset | Select one of the 13 Emulated Performance choices by abbreviated CPU and clock. |
@@ -404,18 +404,17 @@ not DOSBox Pure's separate CPU-core implementation.
 
 ### Windowed
 
-```powershell
---window-mode windowed
-```
-
-Windowed is the runtime default when neither the CLI nor a defaults JSON file
-specifies `screen_fullscreen`.
+Omit `--fullscreen`. The builder writes `screen_fullscreen: false`, replacing
+any conflicting value supplied through `--config`.
 
 ### Fullscreen
 
 ```powershell
---window-mode fullscreen
+--fullscreen
 ```
+
+This writes `screen_fullscreen: true`. Both values are first-launch package
+defaults; a persisted user setting may take precedence on later launches.
 
 ### Aspect ratio
 
@@ -478,7 +477,6 @@ value must be a JSON string:
 ```json
 {
   "package_startup": "START.BAT",
-  "screen_fullscreen": "true",
   "dosbox_pure_aspect_correction": "padded",
   "dosbox_pure_memory_size": "32",
   "dosbox_pure_cycles": "26800",
@@ -591,7 +589,7 @@ title is used.
   --icon "C:\Games\Dune2\Dune2.png" `
   --config "C:\Games\Dune2\DOSBoxPure.defaults.cfg" `
   --emu-perf 486dx2-66 `
-  --window-mode fullscreen `
+  --fullscreen `
   --aspect-ratio padded `
   --scanlines
 ```

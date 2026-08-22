@@ -674,7 +674,7 @@ Direct packaging:
 ```powershell
 makegame.exe game.dosz GAME.EXE --template DOSBoxPureStandAlone.exe `
   --package-id com.example.game --title "Example Game" `
-  --startup GAME.EXE --emu-perf 486dx2-66 --window-mode fullscreen `
+  --startup GAME.EXE --emu-perf 486dx2-66 --fullscreen `
   --aspect-ratio padded --crt-filter
 ```
 
@@ -697,7 +697,7 @@ replaced and Windows icon extraction is used to verify the result.
 
 The optional default config is the flat JSON format written by DOSBox Pure
 Unleashed. It can carry the full recognized option set, including memory,
-cycles, emulated graphics hardware, fullscreen, scaling, scanlines and CRT
+cycles, emulated graphics hardware, scaling, scanlines and CRT
 filter parameters. Resource `103` is parsed directly from the executable and
 is never reconstructed on disk. Its precedence is:
 
@@ -715,7 +715,7 @@ Frequently used presentation defaults are also available directly on the
 command line:
 
 ```text
---window-mode windowed|fullscreen
+--fullscreen
 --aspect-ratio off|on|doublescan|padded|padded-doublescan|fill
 --cycles auto|max|200..1000000
 --emu-perf auto|max|8086-4.77|286-6|286-12.5|386-20|386dx-33|486dx-33|486dx2-66|pentium-100|pentium-ii-300|pentium-iii-600|athlon-1200
@@ -731,7 +731,10 @@ Both `--cycles` and the abbreviated hardware presets exposed by `--emu-perf`
 set `dosbox_pure_cycles`; `--cpu-type` sets `dosbox_pure_cpu_type`. Cycles accepts
 `auto`, `max`, or a whole number from 200 through 1,000,000. The CPU-type list
 matches the six types compiled into this runtime. Windowed is the native
-default when neither CLI nor defaults JSON specifies a mode. `--aspect-ratio`
+package default when `--fullscreen` is omitted; the builder writes
+`screen_fullscreen: false` even if `--config` contains a conflicting value.
+Supplying `--fullscreen` writes `screen_fullscreen: true`. Persisted user
+settings can still take precedence on later launches. `--aspect-ratio`
 sets `dosbox_pure_aspect_correction`; `off` and `on` map
 to the core's `false` and `true` values, while the other four CLI values map
 directly to their identically named core modes. The six modes are mutually

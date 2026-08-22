@@ -766,7 +766,8 @@ The builder can merge common performance and presentation options without a
 separate config:
 
 ```text
---window-mode windowed|fullscreen  -> screen_fullscreen false|true
+--fullscreen                       -> screen_fullscreen true
+omitted                             -> screen_fullscreen false
 --aspect-ratio off|on              -> dosbox_pure_aspect_correction false|true
 --aspect-ratio doublescan|padded|padded-doublescan|fill
                                    -> dosbox_pure_aspect_correction with the same value
@@ -789,9 +790,12 @@ abbreviated CPU-and-clock values and maps them to `auto`, `max`, or their fixed
 cycle counts. `--cpu-type` accepts `auto`, `386`, `386_slow`,
 `386_prefetch`, `486_slow`, or `pentium_slow`, which
 is the complete type list compiled into this build (`C_MMX` is disabled). The
-three switches are mutually exclusive and each is accepted at most once. When no
-window value is supplied by either source, the runtime's windowed default
-remains in effect. The aspect-ratio switch exposes
+three switches are mutually exclusive and each is accepted at most once.
+`--fullscreen` is a boolean switch: when present it writes
+`screen_fullscreen: true`; when omitted the builder writes
+`screen_fullscreen: false`. This deterministic CLI rule replaces any conflicting
+value loaded from `--config`, while later persisted user settings retain their
+higher precedence. The aspect-ratio switch exposes
 all six mutually exclusive values recognized by the bundled core and is
 accepted at most once. Scanlines-only and full CRT mode are mutually exclusive;
 the latter already includes scanlines.
@@ -1134,10 +1138,11 @@ without an `exit` command. The batch returned normally after persisting
 in 1.12 seconds without key input. This specifically covers archives with no
 root `DOSBOX.BAT` and prevents the Pure Menu completion prompt.
 
-Presentation-switch validation originally confirmed that explicit windowed-only
-output contained one default, a package without CLI or config presentation
-values contained no resource 103, and all four presentation variants loaded
-their defaults, executed metadata startup and exited with code 0. After adding
+The original two-value `--window-mode` validation confirmed that explicit
+windowed-only output contained one default, a package without CLI or config
+presentation values contained no resource 103, and all four presentation
+variants loaded their defaults, executed metadata startup and exited with code
+0. After adding
 the shared CRT appearance defaults, two further packages were generated from a
 config containing conflicting CRT values. Direct inspection of resource 103
 confirmed that `--scanlines` produced CRT mode 1 and `--crt-filter` produced CRT
@@ -1172,6 +1177,17 @@ value in resource 103, replaced a conflicting config-file value, and preserved
 an unrelated memory setting. The source archive hash remained unchanged. A
 `pentium-100` memory-backed disk-image package created its overlay and exited
 with code 0.
+
+The boolean fullscreen replacement rejected the former `--window-mode`, the
+incorrect `--full-screen` spelling, valued `--fullscreen=true` syntax, and a
+repeated `--fullscreen`, each with exit code 2. Built-in help contained only the
+new `--fullscreen` spelling. Four generated packages covered the flag present
+and absent, both with and without a contradictory config file. Resource 103
+contained `screen_fullscreen: true` only when the flag was present and `false`
+otherwise; conflicting config values were replaced and unrelated memory values
+were preserved. The source archive hash remained unchanged. Windowed-default
+and fullscreen smoke packages both created their overlays and exited with code
+0.
 
 Text-mode packaging validation generated packages through both `--text-mode`
 and manifest `text_mode: true`. Direct inspection of resource 101 confirmed

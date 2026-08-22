@@ -84,7 +84,7 @@ makegame.exe game.dosz GAME.exe `
   --title "Example DOS Game" `
   --icon game-icon.png `
   --config DOSBoxPure.defaults.cfg `
-  --window-mode fullscreen `
+  --fullscreen `
   --aspect-ratio padded `
   --emu-perf 486dx2-66 `
   --crt-filter
@@ -152,16 +152,21 @@ JSON for other performance controls.
 The builder exposes common first-launch presentation choices directly:
 
 ```text
---window-mode windowed     Start windowed
---window-mode fullscreen   Start fullscreen
+--fullscreen               Start fullscreen; omit for windowed
 --aspect-ratio <mode>      Set DOSBox Pure aspect correction
 --scanlines                Scanlines only, sharpest, without curvature/corners
 --crt-filter               TV-style CRT, sharpest, without curvature/corners
 ```
 
-If neither the command line nor the supplied defaults JSON specifies
-`screen_fullscreen`, startup defaults to windowed. CRT effects remain off when
-neither a CLI effect flag nor corresponding config value is supplied.
+The builder always writes a deterministic window default:
+
+- `--fullscreen` writes `screen_fullscreen: true`;
+- omitting it writes `screen_fullscreen: false`, replacing a conflicting value
+  supplied through `--config`.
+
+Persisted user settings can still take precedence on later launches. CRT
+effects remain off when neither a CLI effect flag nor corresponding config
+value is supplied.
 
 `--aspect-ratio` accepts exactly one of the mutually exclusive modes supported
 by the bundled DOSBox Pure core. Repeating the option is an error:
@@ -183,7 +188,7 @@ filter already includes scanlines. Their generated settings are:
 | `--scanlines` | `1` (Only Scanlines) | `3` (Normal gaps) | `7` (Sharpest) | `0` (Disabled) | `0` (Disabled) |
 | `--crt-filter` | `2` (TV style phosphors) | `3` (Normal gaps) | `7` (Sharpest) | `0` (Disabled) | `0` (Disabled) |
 
-Explicit CLI cycles, emulated-performance, CPU-type, window, aspect-ratio, and
+Explicit CLI cycles, emulated-performance, CPU-type, fullscreen, aspect-ratio, and
 effect options override matching values loaded through `--config`. They remain
 package defaults: persisted user settings still take precedence on later
 launches.
@@ -209,7 +214,6 @@ Examples include:
 ```json
 {
   "package_startup": "GAME\\GAME.EXE",
-  "screen_fullscreen": "true",
   "dosbox_pure_memory_size": "32",
   "dosbox_pure_cycles": "26800",
   "dosbox_pure_machine": "svga",

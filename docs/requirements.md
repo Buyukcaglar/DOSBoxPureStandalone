@@ -1058,7 +1058,7 @@ The builder must also expose common presentation defaults without requiring a
 hand-edited config file:
 
 ```text
---window-mode windowed|fullscreen
+--fullscreen
 --aspect-ratio off|on|doublescan|padded|padded-doublescan|fill
 --cycles auto|max|200..1000000
 --emu-perf auto|max|8086-4.77|286-6|286-12.5|386-20|386dx-33|486dx-33|486dx2-66|pentium-100|pentium-ii-300|pentium-iii-600|athlon-1200
@@ -1067,7 +1067,10 @@ hand-edited config file:
 --crt-filter
 ```
 
-Windowed is the default when neither CLI nor config specifies a mode.
+`--fullscreen` must be a valueless boolean switch. When present, the builder
+must write `screen_fullscreen: true`; when omitted, it must write
+`screen_fullscreen: false`, replacing any conflicting value from defaults JSON.
+The former `--window-mode` option must be rejected as unknown.
 `--cycles` must map to `dosbox_pure_cycles`; `--emu-perf` must map its 13 named
 CPU-and-clock presets to the same 13 Emulated Performance values; `--cpu-type`
 must map to `dosbox_pure_cpu_type`. Cycles must accept `auto`, `max`, or a whole
@@ -1082,7 +1085,7 @@ the builder must reject repeated `--aspect-ratio` arguments.
 `--scanlines` maps to scanlines-only mode with normal intensity;
 `--crt-filter` maps to TV-style phosphors with normal scanlines. Both effect
 flags must also set blur/sharpness to Sharpest and disable curvature and rounded
-corners. These effect flags are mutually exclusive. Explicit CLI window,
+corners. These effect flags are mutually exclusive. Explicit CLI fullscreen,
 aspect-ratio, and effect values override matching values from the defaults JSON
 before resource 103 is generated.
 

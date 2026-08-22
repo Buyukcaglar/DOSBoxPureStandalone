@@ -13,7 +13,7 @@ internal sealed class CommandLine
     public string? Startup { get; private set; }
     public string? IconPath { get; private set; }
     public string? DefaultConfigPath { get; private set; }
-    public string? WindowMode { get; private set; }
+    public bool Fullscreen { get; private set; }
     public string? AspectRatio { get; private set; }
     public string? Cycles { get; private set; }
     public string? EmulatedPerformance { get; private set; }
@@ -51,7 +51,11 @@ internal sealed class CommandLine
                 case "--startup": result.Startup = ReadValue(args, ref index, argument); break;
                 case "--icon": result.IconPath = ReadValue(args, ref index, argument); break;
                 case "--config": result.DefaultConfigPath = ReadValue(args, ref index, argument); break;
-                case "--window-mode": result.WindowMode = ReadValue(args, ref index, argument).Trim().ToLowerInvariant(); break;
+                case "--fullscreen":
+                    if (result.Fullscreen)
+                        throw new PackageBuilderException("--fullscreen may be specified only once.");
+                    result.Fullscreen = true;
+                    break;
                 case "--aspect-ratio":
                     if (result.AspectRatio is not null)
                         throw new PackageBuilderException("--aspect-ratio may be specified only once; its six modes are mutually exclusive.");
@@ -106,8 +110,6 @@ internal sealed class CommandLine
         if (positional.Count != 0)
             throw new PackageBuilderException("Too many positional arguments. Use --help for usage.");
 
-        if (result.WindowMode is not null && result.WindowMode is not ("windowed" or "fullscreen"))
-            throw new PackageBuilderException("--window-mode must be 'windowed' or 'fullscreen'.");
         if (result.AspectRatio is not null && result.AspectRatio is not ("off" or "on" or "doublescan" or "padded" or "padded-doublescan" or "fill"))
             throw new PackageBuilderException("--aspect-ratio must be 'off', 'on', 'doublescan', 'padded', 'padded-doublescan', or 'fill'.");
         if (result.Cycles is not null && !IsValidCycles(result.Cycles))
@@ -170,7 +172,7 @@ internal sealed class CommandLine
         Console.WriteLine("  makegame.exe game.dosz GAME.exe --template DOSBoxPureStandAlone.exe");
         Console.WriteLine("      --package-id com.example.game --title \"Example Game\"");
         Console.WriteLine("      [--startup GAME.EXE] [--icon game.png] [--config DOSBoxPure.cfg]");
-        Console.WriteLine("      [--window-mode windowed|fullscreen] [--aspect-ratio <mode>]");
+        Console.WriteLine("      [--fullscreen] [--aspect-ratio <mode>]");
         Console.WriteLine("      [--cycles <value>|--emu-perf <preset>|--cpu-type <type>]");
         Console.WriteLine("      [--text-mode] [--scanlines|--crt-filter]");
         Console.WriteLine("      [--overwrite]");
@@ -185,7 +187,7 @@ internal sealed class CommandLine
         Console.WriteLine("  --startup <path>      Archive-relative .EXE, .COM or .BAT startup file");
         Console.WriteLine("  --icon <path>         PNG converted to multi-size Windows icon resources");
         Console.WriteLine("  --config <path>       DOSBoxPure.cfg JSON embedded as package defaults");
-        Console.WriteLine("  --window-mode <mode>  Startup mode: windowed (default) or fullscreen");
+        Console.WriteLine("  --fullscreen          Start fullscreen; omission defaults to windowed");
         Console.WriteLine("  --aspect-ratio <mode> off, on, doublescan, padded, padded-doublescan, or fill");
         Console.WriteLine("  --cycles <value>      auto, max, or a whole number from 200 through 1000000");
         Console.WriteLine("  --emu-perf <preset>   Named performance preset, for example pentium-100");
