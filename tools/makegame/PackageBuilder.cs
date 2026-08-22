@@ -20,6 +20,7 @@ internal static partial class PackageBuilder
     private const int ArchiveResourceId = 101;
     private const int MetadataResourceId = 102;
     private const int DefaultConfigResourceId = 103;
+    private const string TextModeMarker = "TEXTMODE.DBP";
     private const ushort ResourceLanguage = 1033;
 
     [GeneratedRegex("^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,126}[A-Za-z0-9])?$", RegexOptions.CultureInvariant)]
@@ -32,6 +33,7 @@ internal static partial class PackageBuilder
         var defaultConfig = DefaultConfig.Load(package.DefaultConfigPath, package.WindowMode, package.AspectRatio, package.EnableScanlines, package.EnableCrtFilter);
         var startup = NormalizeAndValidateStartup(package.Startup ?? defaultConfig.PackageStartup ?? "DOSBOX.BAT");
         var archiveBytes = ValidateAndReadArchive(package.ArchivePath, startup);
+        if (package.TextMode) archiveBytes = EnsureTextModeMarker(archiveBytes);
         var archiveIdentity = CalculateArchiveIdentity(archiveBytes);
         var icon = package.IconPath is null ? null : IconResourceBuilder.FromPng(package.IconPath);
         var metadataBytes = CreateMetadata(package, startup, archiveIdentity, defaultConfig.Data is not null);
@@ -180,6 +182,38 @@ internal static partial class PackageBuilder
         }
 
         return File.ReadAllBytes(archivePath);
+    }
+
+    private static byte[] EnsureTextModeMarker(byte[] archiveBytes)
+    {
+        try
+        {
+            using (var source = new MemoryStream(archiveBytes, false))
+            using (var archive = new ZipArchive(source, ZipArchiveMode.Read, false))
+            {
+                if (archive.Entries.Any(entry => entry.FullName.Equals(TextModeMarker, StringComparison.OrdinalIgnoreCase)))
+                    return archiveBytes;
+            }
+
+            const int markerOverheadAllowance = 4096;
+            if (archiveBytes.Length > Array.MaxLength - markerOverheadAllowance)
+                throw new PackageBuilderException("Game archive is too large to add the text-mode marker in memory.");
+
+            using var output = new MemoryStream(archiveBytes.Length + markerOverheadAllowance);
+            output.Write(archiveBytes);
+            output.Position = 0;
+            using (var archive = new ZipArchive(output, ZipArchiveMode.Update, true))
+            {
+                var marker = archive.CreateEntry(TextModeMarker, CompressionLevel.NoCompression);
+                marker.LastWriteTime = new DateTimeOffset(1980, 1, 1, 0, 0, 0, TimeSpan.Zero);
+            }
+            return output.ToArray();
+        }
+        catch (PackageBuilderException) { throw; }
+        catch (Exception ex)
+        {
+            throw new PackageBuilderException($"Unable to add the text-mode marker to the embedded archive: {ex.Message}", ex);
+        }
     }
 
     private static void ValidateArchivePath(string path)

@@ -35,6 +35,7 @@ need to install .NET separately.
 DOSBoxPureStandAlone.exe    Clean package runtime
 makegame.exe                Package builder
 MAKEGAME-GUIDE.md           Complete guide and option reference
+RELEASE-NOTES.md            Changes and upgrade notes for this release
 README-DISCLAIMER.md        Attribution, content warning, and disclaimer
 BUILD-INFO.txt              Build revisions and checksums
 examples\                   Manifest and defaults examples

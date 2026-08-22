@@ -124,6 +124,7 @@ manifest directory.
 | `--config` | JSON path | Embed DOSBox Pure defaults from a flat `DOSBoxPure.cfg`-style JSON object. |
 | `--window-mode` | `windowed` or `fullscreen` | Set the first-launch window mode. |
 | `--aspect-ratio` | aspect mode | Set the first-launch DOSBox Pure aspect-correction mode. |
+| `--text-mode` | none | Declare a game that intentionally remains in DOS text mode. |
 | `--scanlines` | none | Enable scanlines-only mode with the project's CRT appearance defaults. |
 | `--crt-filter` | none | Enable TV-style CRT filtering and scanlines with the project's appearance defaults. |
 | `--validate-only` | none | Validate all inputs without creating an executable. |
@@ -276,16 +277,35 @@ outer ZIP when practical so random access does not repeatedly decompress it.
 ## Text-mode games
 
 Dedicated graphical packages hide the DOS shell and transitional DOS text
-frames. A game intended to remain in text mode must include an empty root-level
-marker:
+frames. For a game intended to remain in text mode, pass:
+
+```powershell
+--text-mode
+```
+
+The builder adds an empty root-level marker to the archive bytes embedded in
+the executable:
 
 ```text
 TEXTMODE.DBP
 ```
 
-For example, a KROZ package normally contains both `TEXTMODE.DBP` and its
-startup target. Do not add the marker to a graphical game merely because its
-startup briefly displays text.
+For example:
+
+```powershell
+.\makegame.exe "KROZ.zip" "KROZ.exe" `
+  --template ".\DOSBoxPureStandAlone.exe" `
+  --package-id "com.example.kroz" `
+  --title "Kroz" `
+  --startup "KROZ.EXE" `
+  --text-mode
+```
+
+The operation occurs entirely in memory. The source ZIP/DOSZ is not modified,
+and no reconstructed archive is written to disk. A manually supplied root-level
+`TEXTMODE.DBP` remains supported; when it already exists, `--text-mode` leaves
+the archive bytes unchanged. Do not use the option for a graphical game merely
+because its startup briefly displays text.
 
 ## PNG application icon
 
@@ -436,6 +456,7 @@ A complete manifest using every manifest field is:
   "output": "ExampleGame.exe",
   "icon": "game-icon.png",
   "default_config": "DOSBoxPure.defaults.cfg",
+  "text_mode": false,
   "version_info": {
     "file_version": "1.2.0.0",
     "product_version": "1.2.0.0",
@@ -462,6 +483,7 @@ Unknown manifest fields are rejected to catch spelling mistakes.
 | `output` | no | Output EXE path; defaults from the archive path. |
 | `icon` | no | PNG icon path. |
 | `default_config` | no | Flat defaults JSON path. |
+| `text_mode` | no | Boolean equivalent of `--text-mode`; defaults to `false`. |
 | `version_info` | no | Windows application version strings. |
 
 Presentation switches are command-line features. To make equivalent values
@@ -550,7 +572,8 @@ the startup batch. For a nested ZIP, use lowercase `-t zip` as shown earlier.
 
 ### A text game remains hidden
 
-Add an empty root-level `TEXTMODE.DBP` marker. Do not add it to ordinary
+Rebuild with `--text-mode`, set manifest `"text_mode": true`, or add an empty
+root-level `TEXTMODE.DBP` marker manually. Do not enable it for ordinary
 graphical games.
 
 ### Windows SmartScreen or antivirus warning

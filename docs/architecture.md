@@ -595,12 +595,13 @@ The menu-time override allows the top-level `exit` command at the end of `DOSBOX
 
 - embedded packages default to graphics presentation and reveal immediately once the packaged program enters a graphics video mode
 - a package that intentionally uses a DOS text display opts in with an empty root-level `TEXTMODE.DBP` archive marker
+- `makegame --text-mode` and manifest `"text_mode": true` add that marker only to the in-memory archive bytes destined for resource 101; the source ZIP/DOSZ is not changed or reconstructed on disk
 - on entry to a text-mode program, the core snapshots the current visible character/attribute cells
 - text readiness is ignored for the first second, preventing a graphics game's temporary text-page or text-resolution changes from exposing a transitional DOS frame
 - after that dwell, a text-mode game reveals when at least one third of those cells have changed or the program changes the visible text page or text resolution
 - a 15-second fallback reveals sparse text applications that intentionally update less than one third of the screen
 
-This keeps Dune II's transitional `SET BLASTER` and memory-detection lines hidden regardless of their duration. A full-screen text game such as KROZ remains supported by including `TEXTMODE.DBP`; without that explicit marker an embedded package never exposes text mode during startup.
+This keeps Dune II's transitional `SET BLASTER` and memory-detection lines hidden regardless of their duration. A full-screen text game such as KROZ uses `--text-mode`, manifest `text_mode`, or a manually supplied `TEXTMODE.DBP`; without that explicit declaration an embedded package never exposes text mode during startup.
 
 Explicit external content paths do not enable dedicated-package mode, preserving normal DOSBox Pure Unleashed behavior for development and ordinary use.
 
@@ -710,12 +711,13 @@ makegame.exe package\package.json
 The packager:
 
 1. copy a clean DOSBox Pure runtime template
-2. embed the DOSZ/ZIP archive
-3. embed package metadata
-4. optionally decode PNG and embed a multi-size Windows application icon
-5. update PE version information
-6. optionally embed a complete default `DOSBoxPure.cfg` as resource 103
-7. reload and verify the generated executable before moving it into place
+2. optionally add an empty root-level `TEXTMODE.DBP` marker in memory
+3. embed the DOSZ/ZIP archive
+4. embed package metadata
+5. optionally decode PNG and embed a multi-size Windows application icon
+6. update PE version information
+7. optionally embed a complete default `DOSBoxPure.cfg` as resource 103
+8. reload and verify the generated executable before moving it into place
 
 The production runtime template contains neither resource 101 nor 102. Windows
 `UpdateResource` creates both resources during packaging. For compatibility,
@@ -726,8 +728,12 @@ archive/metadata pair.
 Archive validation reads every ZIP member, rejects unsafe or duplicate paths,
 and requires the resolved startup file to exist. Startup resolves from CLI,
 manifest, reserved defaults-JSON `package_startup`, then root `DOSBOX.BAT`.
-Input archive bytes are stored directly as resource 101; packaging does not
-extract them.
+Input archive bytes are stored directly as resource 101 by default. With
+`--text-mode` or manifest `text_mode`, the builder adds only the empty
+root-level `TEXTMODE.DBP` entry to an in-memory copy before resource embedding.
+It does not alter the source archive, extract its members, or reconstruct an
+archive on disk. If the marker already exists, the original bytes remain
+unchanged.
 
 The PNG converter preserves aspect ratio and centers rectangular images on a
 transparent square. It generates 16, 24, 32, 48, 64, 128 and 256-pixel PNG
@@ -1131,6 +1137,14 @@ and inspected resource 103 directly. `off` and `on` serialized as `false` and
 unchanged. A package built from a conflicting defaults file confirmed that the
 CLI value replaced only `dosbox_pure_aspect_correction` while preserving an
 unrelated memory setting. An unsupported mode was rejected with exit code 2.
+
+Text-mode packaging validation generated packages through both `--text-mode`
+and manifest `text_mode: true`. Direct inspection of resource 101 confirmed
+exactly one empty root-level marker in each result and matching content hashes
+for every pre-existing archive entry. The source and an unflagged embedded
+archive remained byte-identical, while a pre-marked source passed through
+byte-for-byte unchanged. Validation-only produced no executable, and the
+flagged memory-backed runtime smoke package exited with code 0.
 
 ## Phase 8
 

@@ -576,7 +576,7 @@ When content is selected from the embedded PE resource, the standalone frontend 
 
 Embedded packages default to graphics presentation and become visible only when they enter a graphics video mode. After readiness is detected, the frontend waits for three fresh core-video submissions before exposing the hardware-rendered surface, because the emulated video mode can change before the surface receives its new pixels. This deterministic default prevents both slow text initialization and a stale final DOS frame from flashing.
 
-Text games must opt in by including an empty root-level `TEXTMODE.DBP` marker in the embedded archive. Marked text games become visible after remaining in text mode for one second and replacing at least one third of the original shell cells; sparse text applications use a 15-second safety fallback. A KROZ package therefore includes `TEXTMODE.DBP`, while a Dune II package does not.
+Text games opt in with `makegame --text-mode`, manifest `"text_mode": true`, or an empty root-level `TEXTMODE.DBP` marker already present in the source archive. The builder adds the marker only to the in-memory archive bytes embedded in the generated executable; it does not modify or reconstruct the source archive on disk. Marked text games become visible after remaining in text mode for one second and replacing at least one third of the original shell cells; sparse text applications use a 15-second safety fallback. A KROZ package uses text mode, while a Dune II package does not.
 
 The embedded-package defaults also prevent the `Unable to exit top DOS shell` warning after the game returns to `DOSBOX.BAT`.
 
@@ -682,6 +682,7 @@ The builder performs:
 ```text
 validated runtime template
   + validated ZIP/DOSZ and startup target
+  + optional in-memory TEXTMODE.DBP marker
   + generated package metadata
   + optional PNG-derived Windows icon set
   + optional DOSBoxPure.cfg defaults
@@ -715,6 +716,7 @@ command line:
 ```text
 --window-mode windowed|fullscreen
 --aspect-ratio off|on|doublescan|padded|padded-doublescan|fill
+--text-mode
 --scanlines
 --crt-filter
 ```
@@ -728,6 +730,11 @@ exclusive, and repeating `--aspect-ratio` is rejected. `--scanlines` selects sca
 also select the sharpest blur setting and disable curvature and rounded corners.
 The two effect flags are mutually exclusive, and explicit CLI values override
 matching values in `--config`.
+
+Text-based games can be declared with `--text-mode`. The manifest equivalent is
+`"text_mode": true`. This inserts an empty root-level `TEXTMODE.DBP` marker into
+the embedded archive bytes without changing the source ZIP/DOSZ or writing a
+temporary archive. Existing manually marked archives remain compatible.
 
 The defaults JSON may also contain the reserved builder directive
 `"package_startup": "GAME\\GAME.EXE"`. It is removed from the embedded option

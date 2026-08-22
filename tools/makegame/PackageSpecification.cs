@@ -15,6 +15,7 @@ internal sealed class PackageManifest
     [JsonPropertyName("output")] public string? Output { get; set; }
     [JsonPropertyName("icon")] public string? Icon { get; set; }
     [JsonPropertyName("default_config")] public string? DefaultConfig { get; set; }
+    [JsonPropertyName("text_mode")] public bool TextMode { get; set; }
     [JsonPropertyName("version_info")] public PackageVersionInfo? VersionInfo { get; set; }
 }
 
@@ -42,6 +43,7 @@ internal sealed class PackageSpecification
     public string? DefaultConfigPath { get; init; }
     public string? WindowMode { get; init; }
     public string? AspectRatio { get; init; }
+    public bool TextMode { get; init; }
     public bool EnableScanlines { get; init; }
     public bool EnableCrtFilter { get; init; }
     public PackageVersionInfo VersionInfo { get; init; } = new();
@@ -106,6 +108,7 @@ internal sealed class PackageSpecification
             DefaultConfigPath = defaultConfigPath,
             WindowMode = commandLine.WindowMode,
             AspectRatio = commandLine.AspectRatio,
+            TextMode = commandLine.EnableTextMode || manifest.TextMode,
             EnableScanlines = commandLine.EnableScanlines,
             EnableCrtFilter = commandLine.EnableCrtFilter,
             VersionInfo = manifest.VersionInfo ?? new PackageVersionInfo(),

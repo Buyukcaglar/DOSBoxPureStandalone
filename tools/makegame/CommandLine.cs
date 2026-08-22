@@ -13,6 +13,7 @@ internal sealed class CommandLine
     public string? DefaultConfigPath { get; private set; }
     public string? WindowMode { get; private set; }
     public string? AspectRatio { get; private set; }
+    public bool EnableTextMode { get; private set; }
     public bool EnableScanlines { get; private set; }
     public bool EnableCrtFilter { get; private set; }
     public bool Overwrite { get; private set; }
@@ -49,6 +50,7 @@ internal sealed class CommandLine
                         throw new PackageBuilderException("--aspect-ratio may be specified only once; its six modes are mutually exclusive.");
                     result.AspectRatio = ReadValue(args, ref index, argument).Trim().ToLowerInvariant();
                     break;
+                case "--text-mode": result.EnableTextMode = true; break;
                 case "--scanlines": result.EnableScanlines = true; break;
                 case "--crt-filter": result.EnableCrtFilter = true; break;
                 case "--overwrite": result.Overwrite = true; break;
@@ -114,7 +116,7 @@ internal sealed class CommandLine
         Console.WriteLine("      --package-id com.example.game --title \"Example Game\"");
         Console.WriteLine("      [--startup GAME.EXE] [--icon game.png] [--config DOSBoxPure.cfg]");
         Console.WriteLine("      [--window-mode windowed|fullscreen] [--aspect-ratio <mode>]");
-        Console.WriteLine("      [--scanlines|--crt-filter]");
+        Console.WriteLine("      [--text-mode] [--scanlines|--crt-filter]");
         Console.WriteLine("      [--overwrite]");
         Console.WriteLine();
         Console.WriteLine("Options:");
@@ -129,6 +131,7 @@ internal sealed class CommandLine
         Console.WriteLine("  --config <path>       DOSBoxPure.cfg JSON embedded as package defaults");
         Console.WriteLine("  --window-mode <mode>  Startup mode: windowed (default) or fullscreen");
         Console.WriteLine("  --aspect-ratio <mode> off, on, doublescan, padded, padded-doublescan, or fill");
+        Console.WriteLine("  --text-mode           Add the TEXTMODE.DBP marker for a text-based game");
         Console.WriteLine("  --scanlines           Scanlines; sharpest image, no curvature/corners");
         Console.WriteLine("  --crt-filter          TV CRT; sharpest image, no curvature/corners");
         Console.WriteLine("  --validate-only       Validate inputs without producing an executable");

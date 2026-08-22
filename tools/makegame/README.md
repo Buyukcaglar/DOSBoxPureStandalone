@@ -54,6 +54,7 @@ Example:
   "output": "ExampleGame.exe",
   "icon": "game-icon.png",
   "default_config": "DOSBoxPure.defaults.cfg",
+  "text_mode": false,
   "version_info": {
     "file_version": "1.0.0.0",
     "product_version": "1.0.0.0",
@@ -90,6 +91,28 @@ makegame.exe game.dosz GAME.exe `
 
 Use `--validate-only` to validate every input without writing an executable.
 Existing output is protected unless `--overwrite` is supplied.
+
+## Text-mode games
+
+Use `--text-mode` for a game whose intended display remains in DOS text mode:
+
+```powershell
+makegame.exe game.zip GAME.exe `
+  --template DOSBoxPureStandAlone.exe `
+  --package-id com.example.textgame `
+  --title "Example Text Game" `
+  --startup GAME.EXE `
+  --text-mode
+```
+
+The builder adds an empty root-level `TEXTMODE.DBP` marker to the archive bytes
+embedded in resource 101. It performs this operation entirely in memory and
+does not modify the source ZIP/DOSZ or create a reconstructed archive on disk.
+If the source archive already contains the marker, its bytes are embedded
+unchanged. The manifest equivalent is `"text_mode": true`.
+
+Do not enable text mode merely because a graphical game displays initialization
+text; those transitional frames are intentionally hidden.
 
 ## Window, aspect-ratio, and display-effect switches
 
