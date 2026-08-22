@@ -1041,6 +1041,7 @@ screen_fullscreen
 dosbox_pure_aspect_correction
 dosbox_pure_memory_size
 dosbox_pure_cycles
+dosbox_pure_cpu_type
 dosbox_pure_machine
 dosbox_pure_svga
 interface_scaling
@@ -1059,11 +1060,19 @@ hand-edited config file:
 ```text
 --window-mode windowed|fullscreen
 --aspect-ratio off|on|doublescan|padded|padded-doublescan|fill
+--cycles auto|max|200..1000000
+--cpu-type auto|386|386_slow|386_prefetch|486_slow|pentium_slow
 --scanlines
 --crt-filter
 ```
 
 Windowed is the default when neither CLI nor config specifies a mode.
+`--cycles` must map to `dosbox_pure_cycles`; `--cpu-type` must map to
+`dosbox_pure_cpu_type`. Cycles must accept `auto`, `max`, or a whole number from
+200 through 1,000,000. CPU values must be restricted to the types compiled into
+the bundled DOSBox Pure core. The two switches are mutually exclusive,
+the builder must reject repeated occurrences, and an explicit value must
+replace the corresponding key loaded from defaults JSON.
 `--aspect-ratio` must map to `dosbox_pure_aspect_correction`; friendly `off`
 and `on` values become the core's `false` and `true` values, while the remaining
 four values are embedded unchanged. The six modes are mutually exclusive, and

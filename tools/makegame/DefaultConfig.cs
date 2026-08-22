@@ -13,7 +13,7 @@ internal static partial class DefaultConfig
     [GeneratedRegex("^[A-Za-z0-9_.-]{1,128}$", RegexOptions.CultureInvariant)]
     private static partial Regex ConfigKeyPattern();
 
-    public static DefaultConfigResult Load(string? path, string? windowMode, string? aspectRatio, bool enableScanlines, bool enableCrtFilter)
+    public static DefaultConfigResult Load(string? path, string? windowMode, string? aspectRatio, string? cycles, string? cpuType, bool enableScanlines, bool enableCrtFilter)
     {
         var settings = new List<KeyValuePair<string, string>>();
         string? packageStartup = null;
@@ -70,6 +70,10 @@ internal static partial class DefaultConfig
                 "on" => "true",
                 _ => aspectRatio,
             });
+        if (cycles is not null)
+            SetSetting(settings, "dosbox_pure_cycles", cycles);
+        if (cpuType is not null)
+            SetSetting(settings, "dosbox_pure_cpu_type", cpuType);
         if (enableScanlines)
         {
             SetSetting(settings, "interface_crtfilter", "1");

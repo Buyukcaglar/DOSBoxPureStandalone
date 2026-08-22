@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace DosBoxPureStandalone.MakeGame;
 
 internal sealed class CommandLine
@@ -13,6 +15,8 @@ internal sealed class CommandLine
     public string? DefaultConfigPath { get; private set; }
     public string? WindowMode { get; private set; }
     public string? AspectRatio { get; private set; }
+    public string? Cycles { get; private set; }
+    public string? CpuType { get; private set; }
     public bool EnableTextMode { get; private set; }
     public bool EnableScanlines { get; private set; }
     public bool EnableCrtFilter { get; private set; }
@@ -49,6 +53,16 @@ internal sealed class CommandLine
                     if (result.AspectRatio is not null)
                         throw new PackageBuilderException("--aspect-ratio may be specified only once; its six modes are mutually exclusive.");
                     result.AspectRatio = ReadValue(args, ref index, argument).Trim().ToLowerInvariant();
+                    break;
+                case "--cycles":
+                    if (result.Cycles is not null)
+                        throw new PackageBuilderException("--cycles may be specified only once.");
+                    result.Cycles = ReadValue(args, ref index, argument).Trim().ToLowerInvariant();
+                    break;
+                case "--cpu-type":
+                    if (result.CpuType is not null)
+                        throw new PackageBuilderException("--cpu-type may be specified only once.");
+                    result.CpuType = ReadValue(args, ref index, argument).Trim().ToLowerInvariant();
                     break;
                 case "--text-mode": result.EnableTextMode = true; break;
                 case "--scanlines": result.EnableScanlines = true; break;
@@ -88,6 +102,12 @@ internal sealed class CommandLine
             throw new PackageBuilderException("--window-mode must be 'windowed' or 'fullscreen'.");
         if (result.AspectRatio is not null && result.AspectRatio is not ("off" or "on" or "doublescan" or "padded" or "padded-doublescan" or "fill"))
             throw new PackageBuilderException("--aspect-ratio must be 'off', 'on', 'doublescan', 'padded', 'padded-doublescan', or 'fill'.");
+        if (result.Cycles is not null && !IsValidCycles(result.Cycles))
+            throw new PackageBuilderException("--cycles must be 'auto', 'max', or a whole number from 200 through 1000000.");
+        if (result.CpuType is not null && result.CpuType is not ("auto" or "386" or "386_slow" or "386_prefetch" or "486_slow" or "pentium_slow"))
+            throw new PackageBuilderException("--cpu-type must be 'auto', '386', '386_slow', '386_prefetch', '486_slow', or 'pentium_slow'.");
+        if (result.Cycles is not null && result.CpuType is not null)
+            throw new PackageBuilderException("--cycles and --cpu-type are mutually exclusive; specify only one performance default.");
         if (result.EnableScanlines && result.EnableCrtFilter)
             throw new PackageBuilderException("--scanlines and --crt-filter are mutually exclusive; the full CRT filter already includes scanlines.");
 
@@ -104,6 +124,10 @@ internal sealed class CommandLine
         return args[index];
     }
 
+    private static bool IsValidCycles(string value) =>
+        value is "auto" or "max" ||
+        int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var cycles) && cycles is >= 200 and <= 1_000_000;
+
     public static void PrintHelp()
     {
         Console.WriteLine("DOSBox Pure Standalone package builder");
@@ -116,6 +140,7 @@ internal sealed class CommandLine
         Console.WriteLine("      --package-id com.example.game --title \"Example Game\"");
         Console.WriteLine("      [--startup GAME.EXE] [--icon game.png] [--config DOSBoxPure.cfg]");
         Console.WriteLine("      [--window-mode windowed|fullscreen] [--aspect-ratio <mode>]");
+        Console.WriteLine("      [--cycles <value>|--cpu-type <type>]");
         Console.WriteLine("      [--text-mode] [--scanlines|--crt-filter]");
         Console.WriteLine("      [--overwrite]");
         Console.WriteLine();
@@ -131,6 +156,8 @@ internal sealed class CommandLine
         Console.WriteLine("  --config <path>       DOSBoxPure.cfg JSON embedded as package defaults");
         Console.WriteLine("  --window-mode <mode>  Startup mode: windowed (default) or fullscreen");
         Console.WriteLine("  --aspect-ratio <mode> off, on, doublescan, padded, padded-doublescan, or fill");
+        Console.WriteLine("  --cycles <value>      auto, max, or a whole number from 200 through 1000000");
+        Console.WriteLine("  --cpu-type <type>     auto, 386, 386_slow, 386_prefetch, 486_slow, or pentium_slow");
         Console.WriteLine("  --text-mode           Reveal intentional or interactive DOS text screens");
         Console.WriteLine("  --scanlines           Scanlines; sharpest image, no curvature/corners");
         Console.WriteLine("  --crt-filter          TV CRT; sharpest image, no curvature/corners");

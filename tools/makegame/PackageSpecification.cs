@@ -43,6 +43,8 @@ internal sealed class PackageSpecification
     public string? DefaultConfigPath { get; init; }
     public string? WindowMode { get; init; }
     public string? AspectRatio { get; init; }
+    public string? Cycles { get; init; }
+    public string? CpuType { get; init; }
     public bool TextMode { get; init; }
     public bool EnableScanlines { get; init; }
     public bool EnableCrtFilter { get; init; }
@@ -108,6 +110,8 @@ internal sealed class PackageSpecification
             DefaultConfigPath = defaultConfigPath,
             WindowMode = commandLine.WindowMode,
             AspectRatio = commandLine.AspectRatio,
+            Cycles = commandLine.Cycles,
+            CpuType = commandLine.CpuType,
             TextMode = commandLine.EnableTextMode || manifest.TextMode,
             EnableScanlines = commandLine.EnableScanlines,
             EnableCrtFilter = commandLine.EnableCrtFilter,

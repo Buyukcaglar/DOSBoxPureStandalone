@@ -86,6 +86,7 @@ makegame.exe game.dosz GAME.exe `
   --config DOSBoxPure.defaults.cfg `
   --window-mode fullscreen `
   --aspect-ratio padded `
+  --cycles 26800 `
   --crt-filter
 ```
 
@@ -123,6 +124,25 @@ video mode. Do not enable the option for noninteractive initialization text
 that should remain hidden. Beneath a Steel Sky has no required text-mode
 interaction, so it does not need `--text-mode`; Civilization does.
 
+## Performance and emulated CPU switches
+
+The builder exposes one performance default directly. The two switches are
+mutually exclusive and each may be specified only once:
+
+```text
+--cycles auto|max|200..1000000
+--cpu-type auto|386|386_slow|386_prefetch|486_slow|pentium_slow
+```
+
+`--cycles` accepts `auto`, `max`, or any whole number from 200 through
+1,000,000; the bundled core's menu presets include 315, 1320, 2750, 4720,
+7800, 13400, 26800, 77000, 200000, 500000, and 1000000. It writes
+`dosbox_pure_cycles`; `--cpu-type` writes
+`dosbox_pure_cpu_type`. The CPU-type choices are the complete set compiled into
+the bundled runtime; MMX emulation is not enabled. An explicit CLI value
+replaces the matching value loaded through `--config`. Use the full defaults
+JSON for other performance controls.
+
 ## Window, aspect-ratio, and display-effect switches
 
 The builder exposes common first-launch presentation choices directly:
@@ -159,9 +179,9 @@ filter already includes scanlines. Their generated settings are:
 | `--scanlines` | `1` (Only Scanlines) | `3` (Normal gaps) | `7` (Sharpest) | `0` (Disabled) | `0` (Disabled) |
 | `--crt-filter` | `2` (TV style phosphors) | `3` (Normal gaps) | `7` (Sharpest) | `0` (Disabled) | `0` (Disabled) |
 
-Explicit CLI window, aspect-ratio, and effect options override matching values loaded through
-`--config`. They remain package defaults: persisted user settings still take
-precedence on later launches.
+Explicit CLI performance, CPU-type, window, aspect-ratio, and effect options
+override matching values loaded through `--config`. They remain package
+defaults: persisted user settings still take precedence on later launches.
 
 ## PNG application icon
 

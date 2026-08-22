@@ -674,7 +674,8 @@ Direct packaging:
 ```powershell
 makegame.exe game.dosz GAME.EXE --template DOSBoxPureStandAlone.exe `
   --package-id com.example.game --title "Example Game" `
-  --startup GAME.EXE --window-mode fullscreen --aspect-ratio padded --crt-filter
+  --startup GAME.EXE --cycles 26800 --window-mode fullscreen `
+  --aspect-ratio padded --crt-filter
 ```
 
 The builder performs:
@@ -716,13 +717,20 @@ command line:
 ```text
 --window-mode windowed|fullscreen
 --aspect-ratio off|on|doublescan|padded|padded-doublescan|fill
+--cycles auto|max|200..1000000
+--cpu-type auto|386|386_slow|386_prefetch|486_slow|pentium_slow
 --text-mode
 --scanlines
 --crt-filter
 ```
 
-Windowed is the native default when neither CLI nor defaults JSON specifies a
-mode. `--aspect-ratio` sets `dosbox_pure_aspect_correction`; `off` and `on` map
+`--cycles` and `--cpu-type` set `dosbox_pure_cycles` and
+`dosbox_pure_cpu_type`. They are mutually exclusive, each may appear only once,
+and explicit values override the matching key in `--config`. Cycles accepts
+`auto`, `max`, or a whole number from 200 through 1,000,000. The CPU-type list
+matches the six types compiled into this runtime. Windowed is the native
+default when neither CLI nor defaults JSON specifies a mode. `--aspect-ratio`
+sets `dosbox_pure_aspect_correction`; `off` and `on` map
 to the core's `false` and `true` values, while the other four CLI values map
 directly to their identically named core modes. The six modes are mutually
 exclusive, and repeating `--aspect-ratio` is rejected. `--scanlines` selects scanlines-only mode with normal gaps;

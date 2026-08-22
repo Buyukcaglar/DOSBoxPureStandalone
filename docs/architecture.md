@@ -762,13 +762,16 @@ and promoted into metadata only when CLI and manifest startup are absent.
 Other path and content selection remains controlled by the runtime rather than
 the defaults layer.
 
-The builder can merge common presentation options without a separate config:
+The builder can merge common performance and presentation options without a
+separate config:
 
 ```text
 --window-mode windowed|fullscreen  -> screen_fullscreen false|true
 --aspect-ratio off|on              -> dosbox_pure_aspect_correction false|true
 --aspect-ratio doublescan|padded|padded-doublescan|fill
                                    -> dosbox_pure_aspect_correction with the same value
+--cycles <supported value>         -> dosbox_pure_cycles
+--cpu-type <supported type>        -> dosbox_pure_cpu_type
 --scanlines                        -> interface_crtfilter 1, interface_crtscanline 3,
                                       interface_crtblur 7, interface_crtcurvature 0,
                                       interface_crtcorner 0
@@ -777,9 +780,15 @@ The builder can merge common presentation options without a separate config:
                                       interface_crtcorner 0
 ```
 
-CLI presentation values replace matching config-file values before resource
-103 is serialized. When no window value is supplied by either source, the
-runtime's windowed default remains in effect. The aspect-ratio switch exposes
+CLI performance and presentation values replace matching config-file values
+before resource 103 is serialized. `--cycles` accepts `auto`, `max`, or a whole
+number from the core's 200-cycle lower limit through the highest advertised
+1,000,000-cycle preset. `--cpu-type` accepts `auto`, `386`, `386_slow`,
+`386_prefetch`, `486_slow`, or `pentium_slow`, which
+is the complete type list compiled into this build (`C_MMX` is disabled). The
+two switches are mutually exclusive and each is accepted at most once. When no
+window value is supplied by either source, the runtime's windowed default
+remains in effect. The aspect-ratio switch exposes
 all six mutually exclusive values recognized by the bundled core and is
 accepted at most once. Scanlines-only and full CRT mode are mutually exclusive;
 the latter already includes scanlines.
@@ -1138,6 +1147,18 @@ and inspected resource 103 directly. `off` and `on` serialized as `false` and
 unchanged. A package built from a conflicting defaults file confirmed that the
 CLI value replaced only `dosbox_pure_aspect_correction` while preserving an
 unrelated memory setting. An unsupported mode was rejected with exit code 2.
+
+Cycles and CPU-type validation accepted `auto`, `max`, the 200 and 1,000,000
+boundaries, all advertised fixed-cycle presets, a custom 3000-cycle value, and
+all six CPU types compiled into the runtime. It rejected out-of-range and
+nonintegral cycle values, unsupported CPU types, repeated options, and a command
+combining `--cycles` with `--cpu-type`, each with exit code 2. Direct inspection
+of generated resource 103 confirmed that
+`--cycles 26800` replaced a conflicting `dosbox_pure_cycles` value and that
+`--cpu-type 386_prefetch` replaced a conflicting `dosbox_pure_cpu_type` value,
+while both packages preserved an unrelated memory setting. Both generated
+memory-backed smoke packages loaded their defaults, exercised the embedded disk
+image, persisted their overlay, and exited with code 0.
 
 Text-mode packaging validation generated packages through both `--text-mode`
 and manifest `text_mode: true`. Direct inspection of resource 101 confirmed

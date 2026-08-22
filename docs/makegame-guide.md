@@ -124,6 +124,8 @@ manifest directory.
 | `--config` | JSON path | Embed DOSBox Pure defaults from a flat `DOSBoxPure.cfg`-style JSON object. |
 | `--window-mode` | `windowed` or `fullscreen` | Set the first-launch window mode. |
 | `--aspect-ratio` | aspect mode | Set the first-launch DOSBox Pure aspect-correction mode. |
+| `--cycles` | cycle mode | Set automatic, maximum, or fixed emulated performance. |
+| `--cpu-type` | CPU type | Select the emulated CPU compatibility model. |
 | `--text-mode` | none | Reveal intentional DOS text, including interactive startup screens before graphics. |
 | `--scanlines` | none | Enable scanlines-only mode with the project's CRT appearance defaults. |
 | `--crt-filter` | none | Enable TV-style CRT filtering and scanlines with the project's appearance defaults. |
@@ -334,6 +336,63 @@ Windows can extract the result.
 The input must be a decodable PNG. For best results, use square artwork at
 least 256 by 256 pixels with transparency where appropriate.
 
+## Cycles and emulated CPU type
+
+Choose at most one of these package defaults:
+
+```powershell
+--cycles 26800
+```
+
+or:
+
+```powershell
+--cpu-type 386_prefetch
+```
+
+`--cycles` and `--cpu-type` are mutually exclusive, and repeating either
+option is rejected. An explicit CLI selection replaces its matching value from
+`--config` before resource 103 is generated.
+
+### Cycle values
+
+`--cycles` accepts any whole number from 200 through 1,000,000. The bundled
+core highlights these choices:
+
+| CLI value | Bundled core meaning |
+| --- | --- |
+| `auto` | Detect the program's performance needs. |
+| `max` | Emulate as many instructions as possible. |
+| `315` | 8086/8088, 4.77 MHz. |
+| `1320` | 286, 6 MHz. |
+| `2750` | 286, 12.5 MHz. |
+| `4720` | 386, 20 MHz. |
+| `7800` | 386DX, 33 MHz. |
+| `13400` | 486DX, 33 MHz. |
+| `26800` | 486DX2, 66 MHz. |
+| `77000` | Pentium, 100 MHz. |
+| `200000` | Pentium II, 300 MHz. |
+| `500000` | Pentium III, 600 MHz. |
+| `1000000` | AMD Athlon, 1.2 GHz. |
+
+The generated resource key is `dosbox_pure_cycles`.
+
+### CPU-type values
+
+| CLI value | Emulated CPU behavior |
+| --- | --- |
+| `auto` | Mixed feature set with maximum performance and compatibility. |
+| `386` | 386 instruction set with fast memory access. |
+| `386_slow` | 386 instruction set with memory privilege checks. |
+| `386_prefetch` | 386 with prefetch-queue emulation; intended for the auto or normal CPU core. |
+| `486_slow` | 486 instruction set with memory privilege checks. |
+| `pentium_slow` | Pentium/586 instruction set with memory privilege checks. |
+
+The generated resource key is `dosbox_pure_cpu_type`. These are all CPU types
+compiled into the distributed runtime; Pentium MMX is unavailable because MMX
+emulation is disabled in this build. This option selects the emulated CPU type,
+not DOSBox Pure's separate CPU-core implementation.
+
 ## Window, aspect-ratio, and CRT options
 
 ### Windowed
@@ -497,8 +556,9 @@ Unknown manifest fields are rejected to catch spelling mistakes.
 | `text_mode` | no | Boolean equivalent of `--text-mode`; defaults to `false`. |
 | `version_info` | no | Windows application version strings. |
 
-Presentation switches are command-line features. To make equivalent values
-fully manifest-driven, place the corresponding settings in `default_config`.
+Performance and presentation switches are command-line features. To make
+equivalent values fully manifest-driven, place the corresponding settings in
+`default_config`.
 
 ### Version information
 
@@ -523,6 +583,7 @@ title is used.
   --startup "DOSBOX.BAT" `
   --icon "C:\Games\Dune2\Dune2.png" `
   --config "C:\Games\Dune2\DOSBoxPure.defaults.cfg" `
+  --cycles 26800 `
   --window-mode fullscreen `
   --aspect-ratio padded `
   --scanlines
@@ -575,6 +636,12 @@ manifest `startup`, or use `package_startup` in the defaults JSON.
 
 Only archive and output are positional. `--startup` accepts one file path, not
 an executable plus its parameters. Move parameters into a `.BAT` file.
+
+### “--cycles and --cpu-type are mutually exclusive”
+
+Choose whether this package needs a fixed/performance cycle default or a CPU
+compatibility type, and pass only that switch. To configure other advanced CPU
+settings, use a matching `DOSBoxPure.cfg` defaults file.
 
 ### A program cannot find CD data on D:
 
