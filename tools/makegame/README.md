@@ -84,7 +84,8 @@ makegame.exe game.dosz GAME.exe `
   --title "Example DOS Game" `
   --icon game-icon.png `
   --config DOSBoxPure.defaults.cfg `
-  --fullscreen `
+  --full-screen `
+  --lock-mouse `
   --aspect-ratio padded `
   --emu-perf 486dx2-66 `
   --crt-filter
@@ -152,7 +153,8 @@ JSON for other performance controls.
 The builder exposes common first-launch presentation choices directly:
 
 ```text
---fullscreen               Start fullscreen; omit for windowed
+--full-screen              Start fullscreen; omit for windowed
+--lock-mouse               Lock the pointer at startup; Ctrl+F11 toggles it
 --aspect-ratio <mode>      Set DOSBox Pure aspect correction
 --scanlines                Scanlines only, sharpest, without curvature/corners
 --crt-filter               TV-style CRT, sharpest, without curvature/corners
@@ -160,9 +162,14 @@ The builder exposes common first-launch presentation choices directly:
 
 The builder always writes a deterministic window default:
 
-- `--fullscreen` writes `screen_fullscreen: true`;
+- `--full-screen` writes `screen_fullscreen: true`;
 - omitting it writes `screen_fullscreen: false`, replacing a conflicting value
   supplied through `--config`.
+
+The mouse-lock default is deterministic in the same way: `--lock-mouse` writes
+`interface_lockmouse: true`; omitting it writes `interface_lockmouse: false`,
+replacing a conflicting value supplied through `--config`. The default hotkey
+modifier is Ctrl, so Ctrl+F11 toggles the lock after startup.
 
 Persisted user settings can still take precedence on later launches. CRT
 effects remain off when neither a CLI effect flag nor corresponding config

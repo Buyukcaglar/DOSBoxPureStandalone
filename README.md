@@ -674,7 +674,7 @@ Direct packaging:
 ```powershell
 makegame.exe game.dosz GAME.EXE --template DOSBoxPureStandAlone.exe `
   --package-id com.example.game --title "Example Game" `
-  --startup GAME.EXE --emu-perf 486dx2-66 --fullscreen `
+  --startup GAME.EXE --emu-perf 486dx2-66 --full-screen --lock-mouse `
   --aspect-ratio padded --crt-filter
 ```
 
@@ -715,7 +715,8 @@ Frequently used presentation defaults are also available directly on the
 command line:
 
 ```text
---fullscreen
+--full-screen
+--lock-mouse
 --aspect-ratio off|on|doublescan|padded|padded-doublescan|fill
 --cycles auto|max|200..1000000
 --emu-perf auto|max|8086-4.77|286-6|286-12.5|386-20|386dx-33|486dx-33|486dx2-66|pentium-100|pentium-ii-300|pentium-iii-600|athlon-1200
@@ -731,10 +732,13 @@ Both `--cycles` and the abbreviated hardware presets exposed by `--emu-perf`
 set `dosbox_pure_cycles`; `--cpu-type` sets `dosbox_pure_cpu_type`. Cycles accepts
 `auto`, `max`, or a whole number from 200 through 1,000,000. The CPU-type list
 matches the six types compiled into this runtime. Windowed is the native
-package default when `--fullscreen` is omitted; the builder writes
+package default when `--full-screen` is omitted; the builder writes
 `screen_fullscreen: false` even if `--config` contains a conflicting value.
-Supplying `--fullscreen` writes `screen_fullscreen: true`. Persisted user
-settings can still take precedence on later launches. `--aspect-ratio`
+Supplying `--full-screen` writes `screen_fullscreen: true`. Similarly,
+`--lock-mouse` writes `interface_lockmouse: true` so the pointer is captured at
+startup; omitting it writes `false`. Ctrl+F11 continues to toggle mouse capture
+during play. These command-line defaults replace conflicting `--config` values,
+while persisted user settings can still take precedence on later launches. `--aspect-ratio`
 sets `dosbox_pure_aspect_correction`; `off` and `on` map
 to the core's `false` and `true` values, while the other four CLI values map
 directly to their identically named core modes. The six modes are mutually

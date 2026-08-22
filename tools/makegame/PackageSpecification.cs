@@ -42,6 +42,7 @@ internal sealed class PackageSpecification
     public string? IconPath { get; init; }
     public string? DefaultConfigPath { get; init; }
     public bool Fullscreen { get; init; }
+    public bool LockMouse { get; init; }
     public string? AspectRatio { get; init; }
     public string? Cycles { get; init; }
     public string? CpuType { get; init; }
@@ -109,6 +110,7 @@ internal sealed class PackageSpecification
             IconPath = iconPath,
             DefaultConfigPath = defaultConfigPath,
             Fullscreen = commandLine.Fullscreen,
+            LockMouse = commandLine.LockMouse,
             AspectRatio = commandLine.AspectRatio,
             Cycles = commandLine.Cycles ?? commandLine.EmulatedPerformanceCycles,
             CpuType = commandLine.CpuType,

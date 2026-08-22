@@ -30,7 +30,7 @@ internal static partial class PackageBuilder
     {
         ValidateSpecification(package, overwrite, validateOnly);
         ValidateTemplate(package.TemplatePath);
-        var defaultConfig = DefaultConfig.Load(package.DefaultConfigPath, package.Fullscreen, package.AspectRatio, package.Cycles, package.CpuType, package.EnableScanlines, package.EnableCrtFilter);
+        var defaultConfig = DefaultConfig.Load(package.DefaultConfigPath, package.Fullscreen, package.LockMouse, package.AspectRatio, package.Cycles, package.CpuType, package.EnableScanlines, package.EnableCrtFilter);
         var startup = NormalizeAndValidateStartup(package.Startup ?? defaultConfig.PackageStartup ?? "DOSBOX.BAT");
         var archiveBytes = ValidateAndReadArchive(package.ArchivePath, startup);
         if (package.TextMode) archiveBytes = EnsureTextModeMarker(archiveBytes);

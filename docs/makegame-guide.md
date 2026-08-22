@@ -122,7 +122,8 @@ manifest directory.
 | `--startup` | archive path | Select an archive-relative `.EXE`, `.COM`, or `.BAT` startup file. |
 | `--icon` | PNG path | Convert a PNG into the packaged application's Windows icon. |
 | `--config` | JSON path | Embed DOSBox Pure defaults from a flat `DOSBoxPure.cfg`-style JSON object. |
-| `--fullscreen` | none | Start fullscreen; omission creates a windowed package default. |
+| `--full-screen` | none | Start fullscreen; omission creates a windowed package default. |
+| `--lock-mouse` | none | Lock the pointer at startup; Ctrl+F11 toggles the lock during play. |
 | `--aspect-ratio` | aspect mode | Set the first-launch DOSBox Pure aspect-correction mode. |
 | `--cycles` | cycle mode | Set automatic, maximum, or fixed emulated performance. |
 | `--emu-perf` | named preset | Select one of the 13 Emulated Performance choices by abbreviated CPU and clock. |
@@ -404,17 +405,30 @@ not DOSBox Pure's separate CPU-core implementation.
 
 ### Windowed
 
-Omit `--fullscreen`. The builder writes `screen_fullscreen: false`, replacing
+Omit `--full-screen`. The builder writes `screen_fullscreen: false`, replacing
 any conflicting value supplied through `--config`.
 
 ### Fullscreen
 
 ```powershell
---fullscreen
+--full-screen
 ```
 
 This writes `screen_fullscreen: true`. Both values are first-launch package
 defaults; a persisted user setting may take precedence on later launches.
+
+### Mouse lock
+
+```powershell
+--lock-mouse
+```
+
+This writes `interface_lockmouse: true` and captures the mouse pointer at
+startup, which is the state normally toggled with Ctrl+F11. Omitting the switch
+writes `interface_lockmouse: false`. Either command-line result replaces a
+conflicting value from `--config`; persisted user settings may still take
+precedence on later launches. Ctrl+F11 remains available to unlock or relock
+the pointer during play.
 
 ### Aspect ratio
 
@@ -589,7 +603,8 @@ title is used.
   --icon "C:\Games\Dune2\Dune2.png" `
   --config "C:\Games\Dune2\DOSBoxPure.defaults.cfg" `
   --emu-perf 486dx2-66 `
-  --fullscreen `
+  --full-screen `
+  --lock-mouse `
   --aspect-ratio padded `
   --scanlines
 ```
