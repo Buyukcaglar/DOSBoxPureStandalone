@@ -92,9 +92,16 @@ makegame.exe game.dosz GAME.exe `
 Use `--validate-only` to validate every input without writing an executable.
 Existing output is protected unless `--overwrite` is supplied.
 
-## Text-mode games
+## Packages that need visible DOS text
 
-Use `--text-mode` for a game whose intended display remains in DOS text mode:
+Use `--text-mode` when the user must see an intentional DOS text display. This
+includes both:
+
+- a game such as KROZ that remains in text mode; and
+- a game such as Sid Meier's Civilization that asks interactive text-mode
+  questions before it later enters graphics mode.
+
+For example, KROZ can be packaged with:
 
 ```powershell
 makegame.exe game.zip GAME.exe `
@@ -111,8 +118,10 @@ does not modify the source ZIP/DOSZ or create a reconstructed archive on disk.
 If the source archive already contains the marker, its bytes are embedded
 unchanged. The manifest equivalent is `"text_mode": true`.
 
-Do not enable text mode merely because a graphical game displays initialization
-text; those transitional frames are intentionally hidden.
+The decision is based on required visibility and interaction, not on the final
+video mode. Do not enable the option for noninteractive initialization text
+that should remain hidden. Beneath a Steel Sky has no required text-mode
+interaction, so it does not need `--text-mode`; Civilization does.
 
 ## Window, aspect-ratio, and display-effect switches
 

@@ -124,7 +124,7 @@ manifest directory.
 | `--config` | JSON path | Embed DOSBox Pure defaults from a flat `DOSBoxPure.cfg`-style JSON object. |
 | `--window-mode` | `windowed` or `fullscreen` | Set the first-launch window mode. |
 | `--aspect-ratio` | aspect mode | Set the first-launch DOSBox Pure aspect-correction mode. |
-| `--text-mode` | none | Declare a game that intentionally remains in DOS text mode. |
+| `--text-mode` | none | Reveal intentional DOS text, including interactive startup screens before graphics. |
 | `--scanlines` | none | Enable scanlines-only mode with the project's CRT appearance defaults. |
 | `--crt-filter` | none | Enable TV-style CRT filtering and scanlines with the project's appearance defaults. |
 | `--validate-only` | none | Validate all inputs without creating an executable. |
@@ -274,23 +274,29 @@ The DOSBox `IMGMOUNT` type value `zip` is case-sensitive in the bundled core;
 use lowercase `-t zip`. Store a nested ZIP without further compression in the
 outer ZIP when practical so random access does not repeatedly decompress it.
 
-## Text-mode games
+## Packages that need visible DOS text mode
 
 Dedicated graphical packages hide the DOS shell and transitional DOS text
-frames. For a game intended to remain in text mode, pass:
+frames. Pass `--text-mode` whenever the user must see an intentional DOS text
+display. There are two main cases:
+
+- the game remains in text mode, as KROZ does; or
+- the game presents interactive text-mode questions before entering graphics,
+  as Sid Meier's Civilization does.
+
+The option is therefore not limited to games whose final display is text. For
+Civilization, a representative command is:
 
 ```powershell
---text-mode
+.\makegame.exe "CIV.zip" "Civilization.exe" `
+  --template ".\DOSBoxPureStandAlone.exe" `
+  --package-id "com.example.civilization" `
+  --title "Sid Meier's Civilization" `
+  --startup "CIV.EXE" `
+  --text-mode
 ```
 
-The builder adds an empty root-level marker to the archive bytes embedded in
-the executable:
-
-```text
-TEXTMODE.DBP
-```
-
-For example:
+For KROZ, which remains in text mode:
 
 ```powershell
 .\makegame.exe "KROZ.zip" "KROZ.exe" `
@@ -301,11 +307,16 @@ For example:
   --text-mode
 ```
 
+The builder adds an empty root-level `TEXTMODE.DBP` marker to the archive bytes
+embedded in the executable.
+
 The operation occurs entirely in memory. The source ZIP/DOSZ is not modified,
 and no reconstructed archive is written to disk. A manually supplied root-level
 `TEXTMODE.DBP` remains supported; when it already exists, `--text-mode` leaves
-the archive bytes unchanged. Do not use the option for a graphical game merely
-because its startup briefly displays text.
+the archive bytes unchanged. Do not use the option merely for noninteractive
+initialization messages that should stay hidden. Beneath a Steel Sky has no
+required text-mode interaction and does not need it; Civilization does because
+the user must see and answer its startup questions.
 
 ## PNG application icon
 
@@ -570,11 +581,12 @@ an executable plus its parameters. Move parameters into a `.BAT` file.
 Preserve the original CD archive or image inside the package and mount it from
 the startup batch. For a nested ZIP, use lowercase `-t zip` as shown earlier.
 
-### A text game remains hidden
+### A required DOS text screen remains hidden
 
 Rebuild with `--text-mode`, set manifest `"text_mode": true`, or add an empty
-root-level `TEXTMODE.DBP` marker manually. Do not enable it for ordinary
-graphical games.
+root-level `TEXTMODE.DBP` marker manually. This applies both to fully text-mode
+games such as KROZ and graphical games with required interactive text startup
+screens such as Civilization. Omit it for noninteractive transitional text.
 
 ### Windows SmartScreen or antivirus warning
 

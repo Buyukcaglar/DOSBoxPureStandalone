@@ -131,7 +131,7 @@ internal sealed class CommandLine
         Console.WriteLine("  --config <path>       DOSBoxPure.cfg JSON embedded as package defaults");
         Console.WriteLine("  --window-mode <mode>  Startup mode: windowed (default) or fullscreen");
         Console.WriteLine("  --aspect-ratio <mode> off, on, doublescan, padded, padded-doublescan, or fill");
-        Console.WriteLine("  --text-mode           Add the TEXTMODE.DBP marker for a text-based game");
+        Console.WriteLine("  --text-mode           Reveal intentional or interactive DOS text screens");
         Console.WriteLine("  --scanlines           Scanlines; sharpest image, no curvature/corners");
         Console.WriteLine("  --crt-filter          TV CRT; sharpest image, no curvature/corners");
         Console.WriteLine("  --validate-only       Validate inputs without producing an executable");

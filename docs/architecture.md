@@ -591,17 +591,18 @@ In dedicated-package mode it:
 
 The menu-time override allows the top-level `exit` command at the end of `DOSBOX.BAT` to shut down the standalone frontend immediately. Hiding the framebuffer prevents both the DOS shell and text-mode initialization emitted by a graphics game from flashing before the game establishes its first graphical frame. The additional frame-submission barrier handles the hardware-rendering handoff where the emulated mode changes before the shared surface stops containing its last DOS frame. The start-menu OSD remains available as a recovery surface if it is opened explicitly.
 
-`DBPS_IsStartupVideoReady()` supports both graphical and text-mode games:
+`DBPS_IsStartupVideoReady()` supports both permanently text-mode games and
+graphical games with an intentional interactive text stage:
 
 - embedded packages default to graphics presentation and reveal immediately once the packaged program enters a graphics video mode
-- a package that intentionally uses a DOS text display opts in with an empty root-level `TEXTMODE.DBP` archive marker
+- a package that requires an intentional DOS text display opts in with an empty root-level `TEXTMODE.DBP` archive marker, whether it remains in text mode or later enters graphics
 - `makegame --text-mode` and manifest `"text_mode": true` add that marker only to the in-memory archive bytes destined for resource 101; the source ZIP/DOSZ is not changed or reconstructed on disk
 - on entry to a text-mode program, the core snapshots the current visible character/attribute cells
 - text readiness is ignored for the first second, preventing a graphics game's temporary text-page or text-resolution changes from exposing a transitional DOS frame
-- after that dwell, a text-mode game reveals when at least one third of those cells have changed or the program changes the visible text page or text resolution
+- after that dwell, the text display reveals when at least one third of those cells have changed or the program changes the visible text page or text resolution
 - a 15-second fallback reveals sparse text applications that intentionally update less than one third of the screen
 
-This keeps Dune II's transitional `SET BLASTER` and memory-detection lines hidden regardless of their duration. A full-screen text game such as KROZ uses `--text-mode`, manifest `text_mode`, or a manually supplied `TEXTMODE.DBP`; without that explicit declaration an embedded package never exposes text mode during startup.
+This keeps Dune II's transitional `SET BLASTER` and memory-detection lines hidden regardless of their duration. KROZ uses `--text-mode` because its entire game display is text. Sid Meier's Civilization also uses it because the user must see and answer startup questions in text mode before graphics begin. Beneath a Steel Sky does not use it because it has no required text-mode interaction. Without an explicit declaration, an embedded package never exposes text mode during startup.
 
 Explicit external content paths do not enable dedicated-package mode, preserving normal DOSBox Pure Unleashed behavior for development and ordinary use.
 
