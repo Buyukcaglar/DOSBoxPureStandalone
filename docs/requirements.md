@@ -1061,18 +1061,20 @@ hand-edited config file:
 --window-mode windowed|fullscreen
 --aspect-ratio off|on|doublescan|padded|padded-doublescan|fill
 --cycles auto|max|200..1000000
+--emu-perf auto|max|8086-4.77|286-6|286-12.5|386-20|386dx-33|486dx-33|486dx2-66|pentium-100|pentium-ii-300|pentium-iii-600|athlon-1200
 --cpu-type auto|386|386_slow|386_prefetch|486_slow|pentium_slow
 --scanlines
 --crt-filter
 ```
 
 Windowed is the default when neither CLI nor config specifies a mode.
-`--cycles` must map to `dosbox_pure_cycles`; `--cpu-type` must map to
-`dosbox_pure_cpu_type`. Cycles must accept `auto`, `max`, or a whole number from
-200 through 1,000,000. CPU values must be restricted to the types compiled into
-the bundled DOSBox Pure core. The two switches are mutually exclusive,
-the builder must reject repeated occurrences, and an explicit value must
-replace the corresponding key loaded from defaults JSON.
+`--cycles` must map to `dosbox_pure_cycles`; `--emu-perf` must map its 13 named
+CPU-and-clock presets to the same 13 Emulated Performance values; `--cpu-type`
+must map to `dosbox_pure_cpu_type`. Cycles must accept `auto`, `max`, or a whole
+number from 200 through 1,000,000. CPU values must be restricted to the types
+compiled into the bundled DOSBox Pure core. The three switches are mutually
+exclusive, the builder must reject repeated occurrences, and an explicit value
+must replace the corresponding key loaded from defaults JSON.
 `--aspect-ratio` must map to `dosbox_pure_aspect_correction`; friendly `off`
 and `on` values become the core's `false` and `true` values, while the remaining
 four values are embedded unchanged. The six modes are mutually exclusive, and

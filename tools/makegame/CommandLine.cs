@@ -16,6 +16,9 @@ internal sealed class CommandLine
     public string? WindowMode { get; private set; }
     public string? AspectRatio { get; private set; }
     public string? Cycles { get; private set; }
+    public string? EmulatedPerformance { get; private set; }
+    public string? EmulatedPerformanceCycles =>
+        EmulatedPerformance is null ? null : MapEmulatedPerformance(EmulatedPerformance);
     public string? CpuType { get; private set; }
     public bool EnableTextMode { get; private set; }
     public bool EnableScanlines { get; private set; }
@@ -58,6 +61,11 @@ internal sealed class CommandLine
                     if (result.Cycles is not null)
                         throw new PackageBuilderException("--cycles may be specified only once.");
                     result.Cycles = ReadValue(args, ref index, argument).Trim().ToLowerInvariant();
+                    break;
+                case "--emu-perf":
+                    if (result.EmulatedPerformance is not null)
+                        throw new PackageBuilderException("--emu-perf may be specified only once.");
+                    result.EmulatedPerformance = ReadValue(args, ref index, argument).Trim().ToLowerInvariant();
                     break;
                 case "--cpu-type":
                     if (result.CpuType is not null)
@@ -104,10 +112,15 @@ internal sealed class CommandLine
             throw new PackageBuilderException("--aspect-ratio must be 'off', 'on', 'doublescan', 'padded', 'padded-doublescan', or 'fill'.");
         if (result.Cycles is not null && !IsValidCycles(result.Cycles))
             throw new PackageBuilderException("--cycles must be 'auto', 'max', or a whole number from 200 through 1000000.");
+        if (result.EmulatedPerformance is not null && MapEmulatedPerformance(result.EmulatedPerformance) is null)
+            throw new PackageBuilderException("--emu-perf must be 'auto', 'max', '8086-4.77', '286-6', '286-12.5', '386-20', '386dx-33', '486dx-33', '486dx2-66', 'pentium-100', 'pentium-ii-300', 'pentium-iii-600', or 'athlon-1200'.");
         if (result.CpuType is not null && result.CpuType is not ("auto" or "386" or "386_slow" or "386_prefetch" or "486_slow" or "pentium_slow"))
             throw new PackageBuilderException("--cpu-type must be 'auto', '386', '386_slow', '386_prefetch', '486_slow', or 'pentium_slow'.");
-        if (result.Cycles is not null && result.CpuType is not null)
-            throw new PackageBuilderException("--cycles and --cpu-type are mutually exclusive; specify only one performance default.");
+        var performanceOptions = (result.Cycles is null ? 0 : 1) +
+            (result.EmulatedPerformance is null ? 0 : 1) +
+            (result.CpuType is null ? 0 : 1);
+        if (performanceOptions > 1)
+            throw new PackageBuilderException("--cycles, --emu-perf, and --cpu-type are mutually exclusive; specify only one performance default.");
         if (result.EnableScanlines && result.EnableCrtFilter)
             throw new PackageBuilderException("--scanlines and --crt-filter are mutually exclusive; the full CRT filter already includes scanlines.");
 
@@ -128,6 +141,24 @@ internal sealed class CommandLine
         value is "auto" or "max" ||
         int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var cycles) && cycles is >= 200 and <= 1_000_000;
 
+    private static string? MapEmulatedPerformance(string value) => value switch
+    {
+        "auto" => "auto",
+        "max" => "max",
+        "8086-4.77" => "315",
+        "286-6" => "1320",
+        "286-12.5" => "2750",
+        "386-20" => "4720",
+        "386dx-33" => "7800",
+        "486dx-33" => "13400",
+        "486dx2-66" => "26800",
+        "pentium-100" => "77000",
+        "pentium-ii-300" => "200000",
+        "pentium-iii-600" => "500000",
+        "athlon-1200" => "1000000",
+        _ => null,
+    };
+
     public static void PrintHelp()
     {
         Console.WriteLine("DOSBox Pure Standalone package builder");
@@ -140,7 +171,7 @@ internal sealed class CommandLine
         Console.WriteLine("      --package-id com.example.game --title \"Example Game\"");
         Console.WriteLine("      [--startup GAME.EXE] [--icon game.png] [--config DOSBoxPure.cfg]");
         Console.WriteLine("      [--window-mode windowed|fullscreen] [--aspect-ratio <mode>]");
-        Console.WriteLine("      [--cycles <value>|--cpu-type <type>]");
+        Console.WriteLine("      [--cycles <value>|--emu-perf <preset>|--cpu-type <type>]");
         Console.WriteLine("      [--text-mode] [--scanlines|--crt-filter]");
         Console.WriteLine("      [--overwrite]");
         Console.WriteLine();
@@ -157,6 +188,10 @@ internal sealed class CommandLine
         Console.WriteLine("  --window-mode <mode>  Startup mode: windowed (default) or fullscreen");
         Console.WriteLine("  --aspect-ratio <mode> off, on, doublescan, padded, padded-doublescan, or fill");
         Console.WriteLine("  --cycles <value>      auto, max, or a whole number from 200 through 1000000");
+        Console.WriteLine("  --emu-perf <preset>   Named performance preset, for example pentium-100");
+        Console.WriteLine("                         auto, max, 8086-4.77, 286-6, 286-12.5, 386-20,");
+        Console.WriteLine("                         386dx-33, 486dx-33, 486dx2-66, pentium-100,");
+        Console.WriteLine("                         pentium-ii-300, pentium-iii-600, athlon-1200");
         Console.WriteLine("  --cpu-type <type>     auto, 386, 386_slow, 386_prefetch, 486_slow, or pentium_slow");
         Console.WriteLine("  --text-mode           Reveal intentional or interactive DOS text screens");
         Console.WriteLine("  --scanlines           Scanlines; sharpest image, no curvature/corners");

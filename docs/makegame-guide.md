@@ -125,6 +125,7 @@ manifest directory.
 | `--window-mode` | `windowed` or `fullscreen` | Set the first-launch window mode. |
 | `--aspect-ratio` | aspect mode | Set the first-launch DOSBox Pure aspect-correction mode. |
 | `--cycles` | cycle mode | Set automatic, maximum, or fixed emulated performance. |
+| `--emu-perf` | named preset | Select one of the 13 Emulated Performance choices by abbreviated CPU and clock. |
 | `--cpu-type` | CPU type | Select the emulated CPU compatibility model. |
 | `--text-mode` | none | Reveal intentional DOS text, including interactive startup screens before graphics. |
 | `--scanlines` | none | Enable scanlines-only mode with the project's CRT appearance defaults. |
@@ -336,7 +337,7 @@ Windows can extract the result.
 The input must be a decodable PNG. For best results, use square artwork at
 least 256 by 256 pixels with transparency where appropriate.
 
-## Cycles and emulated CPU type
+## Cycles, emulated performance, and CPU type
 
 Choose at most one of these package defaults:
 
@@ -347,35 +348,41 @@ Choose at most one of these package defaults:
 or:
 
 ```powershell
+--emu-perf 486dx2-66
+```
+
+or:
+
+```powershell
 --cpu-type 386_prefetch
 ```
 
-`--cycles` and `--cpu-type` are mutually exclusive, and repeating either
-option is rejected. An explicit CLI selection replaces its matching value from
-`--config` before resource 103 is generated.
+`--cycles`, `--emu-perf`, and `--cpu-type` are mutually exclusive, and
+repeating any option is rejected. An explicit CLI selection replaces its
+matching value from `--config` before resource 103 is generated.
 
-### Cycle values
+### Cycle and Emulated Performance values
 
-`--cycles` accepts any whole number from 200 through 1,000,000. The bundled
-core highlights these choices:
+`--cycles` accepts any whole number from 200 through 1,000,000. `--emu-perf`
+provides readable names for the 13 choices highlighted by the bundled core:
 
-| CLI value | Bundled core meaning |
-| --- | --- |
-| `auto` | Detect the program's performance needs. |
-| `max` | Emulate as many instructions as possible. |
-| `315` | 8086/8088, 4.77 MHz. |
-| `1320` | 286, 6 MHz. |
-| `2750` | 286, 12.5 MHz. |
-| `4720` | 386, 20 MHz. |
-| `7800` | 386DX, 33 MHz. |
-| `13400` | 486DX, 33 MHz. |
-| `26800` | 486DX2, 66 MHz. |
-| `77000` | Pentium, 100 MHz. |
-| `200000` | Pentium II, 300 MHz. |
-| `500000` | Pentium III, 600 MHz. |
-| `1000000` | AMD Athlon, 1.2 GHz. |
+| `--emu-perf` value | Generated cycles value | Bundled core meaning |
+| --- | --- | --- |
+| `auto` | `auto` | Detect the program's performance needs. |
+| `max` | `max` | Emulate as many instructions as possible. |
+| `8086-4.77` | `315` | 8086/8088, 4.77 MHz. |
+| `286-6` | `1320` | 286, 6 MHz. |
+| `286-12.5` | `2750` | 286, 12.5 MHz. |
+| `386-20` | `4720` | 386, 20 MHz. |
+| `386dx-33` | `7800` | 386DX, 33 MHz. |
+| `486dx-33` | `13400` | 486DX, 33 MHz. |
+| `486dx2-66` | `26800` | 486DX2, 66 MHz. |
+| `pentium-100` | `77000` | Pentium, 100 MHz. |
+| `pentium-ii-300` | `200000` | Pentium II, 300 MHz. |
+| `pentium-iii-600` | `500000` | Pentium III, 600 MHz. |
+| `athlon-1200` | `1000000` | AMD Athlon, 1.2 GHz. |
 
-The generated resource key is `dosbox_pure_cycles`.
+Both switches generate the resource key `dosbox_pure_cycles`.
 
 ### CPU-type values
 
@@ -583,7 +590,7 @@ title is used.
   --startup "DOSBOX.BAT" `
   --icon "C:\Games\Dune2\Dune2.png" `
   --config "C:\Games\Dune2\DOSBoxPure.defaults.cfg" `
-  --cycles 26800 `
+  --emu-perf 486dx2-66 `
   --window-mode fullscreen `
   --aspect-ratio padded `
   --scanlines
@@ -637,11 +644,12 @@ manifest `startup`, or use `package_startup` in the defaults JSON.
 Only archive and output are positional. `--startup` accepts one file path, not
 an executable plus its parameters. Move parameters into a `.BAT` file.
 
-### “--cycles and --cpu-type are mutually exclusive”
+### “--cycles, --emu-perf, and --cpu-type are mutually exclusive”
 
-Choose whether this package needs a fixed/performance cycle default or a CPU
-compatibility type, and pass only that switch. To configure other advanced CPU
-settings, use a matching `DOSBoxPure.cfg` defaults file.
+Choose whether this package needs a raw cycle value, a readable Emulated
+Performance preset, or a CPU compatibility type, and pass only that switch. To
+configure other advanced CPU settings, use a matching `DOSBoxPure.cfg` defaults
+file.
 
 ### A program cannot find CD data on D:
 

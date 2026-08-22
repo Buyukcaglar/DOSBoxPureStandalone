@@ -86,7 +86,7 @@ makegame.exe game.dosz GAME.exe `
   --config DOSBoxPure.defaults.cfg `
   --window-mode fullscreen `
   --aspect-ratio padded `
-  --cycles 26800 `
+  --emu-perf 486dx2-66 `
   --crt-filter
 ```
 
@@ -124,20 +124,24 @@ video mode. Do not enable the option for noninteractive initialization text
 that should remain hidden. Beneath a Steel Sky has no required text-mode
 interaction, so it does not need `--text-mode`; Civilization does.
 
-## Performance and emulated CPU switches
+## Cycles, emulated performance, and CPU type
 
-The builder exposes one performance default directly. The two switches are
+The builder exposes one performance default directly. The three switches are
 mutually exclusive and each may be specified only once:
 
 ```text
 --cycles auto|max|200..1000000
+--emu-perf auto|max|8086-4.77|286-6|286-12.5|386-20|386dx-33|486dx-33|486dx2-66|pentium-100|pentium-ii-300|pentium-iii-600|athlon-1200
 --cpu-type auto|386|386_slow|386_prefetch|486_slow|pentium_slow
 ```
 
 `--cycles` accepts `auto`, `max`, or any whole number from 200 through
 1,000,000; the bundled core's menu presets include 315, 1320, 2750, 4720,
 7800, 13400, 26800, 77000, 200000, 500000, and 1000000. It writes
-`dosbox_pure_cycles`; `--cpu-type` writes
+`dosbox_pure_cycles`. `--emu-perf` exposes those same 13 menu choices through
+abbreviated CPU-and-clock names such as `pentium-100` and
+`pentium-ii-300`, then writes the corresponding `dosbox_pure_cycles` value.
+`--cpu-type` writes
 `dosbox_pure_cpu_type`. The CPU-type choices are the complete set compiled into
 the bundled runtime; MMX emulation is not enabled. An explicit CLI value
 replaces the matching value loaded through `--config`. Use the full defaults
@@ -179,9 +183,10 @@ filter already includes scanlines. Their generated settings are:
 | `--scanlines` | `1` (Only Scanlines) | `3` (Normal gaps) | `7` (Sharpest) | `0` (Disabled) | `0` (Disabled) |
 | `--crt-filter` | `2` (TV style phosphors) | `3` (Normal gaps) | `7` (Sharpest) | `0` (Disabled) | `0` (Disabled) |
 
-Explicit CLI performance, CPU-type, window, aspect-ratio, and effect options
-override matching values loaded through `--config`. They remain package
-defaults: persisted user settings still take precedence on later launches.
+Explicit CLI cycles, emulated-performance, CPU-type, window, aspect-ratio, and
+effect options override matching values loaded through `--config`. They remain
+package defaults: persisted user settings still take precedence on later
+launches.
 
 ## PNG application icon
 

@@ -674,7 +674,7 @@ Direct packaging:
 ```powershell
 makegame.exe game.dosz GAME.EXE --template DOSBoxPureStandAlone.exe `
   --package-id com.example.game --title "Example Game" `
-  --startup GAME.EXE --cycles 26800 --window-mode fullscreen `
+  --startup GAME.EXE --emu-perf 486dx2-66 --window-mode fullscreen `
   --aspect-ratio padded --crt-filter
 ```
 
@@ -718,15 +718,17 @@ command line:
 --window-mode windowed|fullscreen
 --aspect-ratio off|on|doublescan|padded|padded-doublescan|fill
 --cycles auto|max|200..1000000
+--emu-perf auto|max|8086-4.77|286-6|286-12.5|386-20|386dx-33|486dx-33|486dx2-66|pentium-100|pentium-ii-300|pentium-iii-600|athlon-1200
 --cpu-type auto|386|386_slow|386_prefetch|486_slow|pentium_slow
 --text-mode
 --scanlines
 --crt-filter
 ```
 
-`--cycles` and `--cpu-type` set `dosbox_pure_cycles` and
-`dosbox_pure_cpu_type`. They are mutually exclusive, each may appear only once,
-and explicit values override the matching key in `--config`. Cycles accepts
+`--cycles`, `--emu-perf`, and `--cpu-type` are mutually exclusive, each may
+appear only once, and explicit values override the matching key in `--config`.
+Both `--cycles` and the abbreviated hardware presets exposed by `--emu-perf`
+set `dosbox_pure_cycles`; `--cpu-type` sets `dosbox_pure_cpu_type`. Cycles accepts
 `auto`, `max`, or a whole number from 200 through 1,000,000. The CPU-type list
 matches the six types compiled into this runtime. Windowed is the native
 default when neither CLI nor defaults JSON specifies a mode. `--aspect-ratio`

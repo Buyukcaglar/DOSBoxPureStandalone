@@ -771,6 +771,7 @@ separate config:
 --aspect-ratio doublescan|padded|padded-doublescan|fill
                                    -> dosbox_pure_aspect_correction with the same value
 --cycles <supported value>         -> dosbox_pure_cycles
+--emu-perf <named preset>          -> corresponding dosbox_pure_cycles value
 --cpu-type <supported type>        -> dosbox_pure_cpu_type
 --scanlines                        -> interface_crtfilter 1, interface_crtscanline 3,
                                       interface_crtblur 7, interface_crtcurvature 0,
@@ -783,10 +784,12 @@ separate config:
 CLI performance and presentation values replace matching config-file values
 before resource 103 is serialized. `--cycles` accepts `auto`, `max`, or a whole
 number from the core's 200-cycle lower limit through the highest advertised
-1,000,000-cycle preset. `--cpu-type` accepts `auto`, `386`, `386_slow`,
+1,000,000-cycle preset. `--emu-perf` exposes the same 13 core menu choices as
+abbreviated CPU-and-clock values and maps them to `auto`, `max`, or their fixed
+cycle counts. `--cpu-type` accepts `auto`, `386`, `386_slow`,
 `386_prefetch`, `486_slow`, or `pentium_slow`, which
 is the complete type list compiled into this build (`C_MMX` is disabled). The
-two switches are mutually exclusive and each is accepted at most once. When no
+three switches are mutually exclusive and each is accepted at most once. When no
 window value is supplied by either source, the runtime's windowed default
 remains in effect. The aspect-ratio switch exposes
 all six mutually exclusive values recognized by the bundled core and is
@@ -1159,6 +1162,16 @@ of generated resource 103 confirmed that
 while both packages preserved an unrelated memory setting. Both generated
 memory-backed smoke packages loaded their defaults, exercised the embedded disk
 image, persisted their overlay, and exited with code 0.
+
+Emulated Performance preset validation accepted all 13 `--emu-perf` names and
+case-insensitive input. It rejected an unsupported preset, repetition, every
+pairwise combination with `--cycles` or `--cpu-type`, and a command containing
+all three mutually exclusive options. Thirteen generated packages were
+inspected directly: every preset produced its documented `dosbox_pure_cycles`
+value in resource 103, replaced a conflicting config-file value, and preserved
+an unrelated memory setting. The source archive hash remained unchanged. A
+`pentium-100` memory-backed disk-image package created its overlay and exited
+with code 0.
 
 Text-mode packaging validation generated packages through both `--text-mode`
 and manifest `text_mode: true`. Direct inspection of resource 101 confirmed

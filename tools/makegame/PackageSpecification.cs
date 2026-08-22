@@ -110,7 +110,7 @@ internal sealed class PackageSpecification
             DefaultConfigPath = defaultConfigPath,
             WindowMode = commandLine.WindowMode,
             AspectRatio = commandLine.AspectRatio,
-            Cycles = commandLine.Cycles,
+            Cycles = commandLine.Cycles ?? commandLine.EmulatedPerformanceCycles,
             CpuType = commandLine.CpuType,
             TextMode = commandLine.EnableTextMode || manifest.TextMode,
             EnableScanlines = commandLine.EnableScanlines,
