@@ -20,6 +20,10 @@ internal static partial class NativeResources
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool UpdateNumericResource(IntPtr update, IntPtr type, IntPtr name, ushort language, byte[] data, uint size);
 
+    [LibraryImport("kernel32.dll", EntryPoint = "UpdateResourceW", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool DeleteNumericResource(IntPtr update, IntPtr type, IntPtr name, ushort language, IntPtr data, uint size);
+
     [LibraryImport("kernel32.dll", EntryPoint = "UpdateResourceW", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool UpdateNamedResource(IntPtr update, IntPtr type, string name, ushort language, byte[] data, uint size);
@@ -98,6 +102,13 @@ internal sealed class ResourceUpdater : IDisposable
         if (handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(ResourceUpdater));
         if (!NativeResources.UpdateNamedResource(handle, type, name, language, data, checked((uint)data.Length)))
             throw NativeResources.Win32Failure($"UpdateResource({name})");
+    }
+
+    public void DeleteNumeric(IntPtr type, int name, ushort language)
+    {
+        if (handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(ResourceUpdater));
+        if (!NativeResources.DeleteNumericResource(handle, type, (IntPtr)name, language, IntPtr.Zero, 0))
+            throw NativeResources.Win32Failure($"UpdateResource(delete {name})");
     }
 
     public void Commit()

@@ -115,8 +115,9 @@ makegame.exe game.zip GAME.exe `
 ```
 
 The builder adds an empty root-level `TEXTMODE.DBP` marker to the archive bytes
-embedded in resource 101. It performs this operation entirely in memory and
-does not modify the source ZIP/DOSZ or create a reconstructed archive on disk.
+stored in the generated executable. It performs this operation entirely in
+memory and does not modify the source ZIP/DOSZ or create a reconstructed archive
+on disk.
 If the source archive already contains the marker, its bytes are embedded
 unchanged. The manifest equivalent is `"text_mode": true`.
 
@@ -276,8 +277,11 @@ Before writing output, the builder validates:
 - Windows version numbers
 
 The builder writes a temporary executable beside the requested output, updates
-resources, reloads the result as a Windows image, compares resource contents,
-and only then moves it into place. A failed build removes the temporary file.
+resources, and stores archives up to 1.5 GiB as resource 101. Larger archives
+are appended after the PE image and located through a bounds-checked trailer;
+the runtime maps that range directly without extraction. The builder reloads
+the result, byte-verifies either storage form, and only then moves it into
+place. A failed build removes the temporary file.
 
 The resulting game executable is unsigned. Updating PE resources invalidates
 any Authenticode signature on the template, so code signing—if required—must

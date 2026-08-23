@@ -12,8 +12,15 @@ internal sealed record PackageBuildResult(
     string Startup,
     long ArchiveSize,
     string ArchiveIdentity,
+    ArchiveStorageMode ArchiveStorage,
     int DefaultConfigCount,
     bool HasCustomIcon);
+
+internal enum ArchiveStorageMode
+{
+    Resource,
+    Appended,
+}
 
 internal static partial class PackageBuilder
 {
@@ -22,6 +29,7 @@ internal static partial class PackageBuilder
     private const int DefaultConfigResourceId = 103;
     private const string TextModeMarker = "TEXTMODE.DBP";
     private const ushort ResourceLanguage = 1033;
+    private const long MaxMappedResourceArchiveSize = 1536L * 1024 * 1024;
 
     [GeneratedRegex("^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,126}[A-Za-z0-9])?$", RegexOptions.CultureInvariant)]
     private static partial Regex PackageIdPattern();
@@ -29,18 +37,21 @@ internal static partial class PackageBuilder
     public static PackageBuildResult Build(PackageSpecification package, bool overwrite, bool validateOnly)
     {
         ValidateSpecification(package, overwrite, validateOnly);
-        ValidateTemplate(package.TemplatePath);
+        var templateContainsArchive = ValidateTemplate(package.TemplatePath);
         var defaultConfig = DefaultConfig.Load(package.DefaultConfigPath, package.Fullscreen, package.LockMouse, package.AspectRatio, package.Cycles, package.CpuType, package.EnableScanlines, package.EnableCrtFilter);
         var startup = NormalizeAndValidateStartup(package.Startup ?? defaultConfig.PackageStartup ?? "DOSBOX.BAT");
         var archiveBytes = ValidateAndReadArchive(package.ArchivePath, startup);
         if (package.TextMode) archiveBytes = EnsureTextModeMarker(archiveBytes);
         var archiveIdentity = CalculateArchiveIdentity(archiveBytes);
+        var archiveStorage = archiveBytes.LongLength > MaxMappedResourceArchiveSize
+            ? ArchiveStorageMode.Appended
+            : ArchiveStorageMode.Resource;
         var icon = package.IconPath is null ? null : IconResourceBuilder.FromPng(package.IconPath);
-        var metadataBytes = CreateMetadata(package, startup, archiveIdentity, defaultConfig.Data is not null);
+        var metadataBytes = CreateMetadata(package, startup, archiveIdentity, archiveStorage, defaultConfig.Data is not null);
         var versionBytes = VersionResourceBuilder.Build(package);
 
         if (validateOnly)
-            return new PackageBuildResult(package.OutputPath, package.PackageId, startup, archiveBytes.LongLength, archiveIdentity, defaultConfig.Count, icon is not null);
+            return new PackageBuildResult(package.OutputPath, package.PackageId, startup, archiveBytes.LongLength, archiveIdentity, archiveStorage, defaultConfig.Count, icon is not null);
 
         var outputDirectory = Path.GetDirectoryName(package.OutputPath)!;
         Directory.CreateDirectory(outputDirectory);
@@ -51,7 +62,10 @@ internal static partial class PackageBuilder
             File.Copy(package.TemplatePath, temporaryPath, false);
             using (var updater = new ResourceUpdater(temporaryPath))
             {
-                updater.SetNumeric(NativeResources.RtRcData, ArchiveResourceId, ResourceLanguage, archiveBytes);
+                if (archiveStorage == ArchiveStorageMode.Resource)
+                    updater.SetNumeric(NativeResources.RtRcData, ArchiveResourceId, ResourceLanguage, archiveBytes);
+                else if (templateContainsArchive)
+                    updater.DeleteNumeric(NativeResources.RtRcData, ArchiveResourceId, ResourceLanguage);
                 updater.SetNumeric(NativeResources.RtRcData, MetadataResourceId, ResourceLanguage, metadataBytes);
                 if (defaultConfig.Data is not null)
                     updater.SetNumeric(NativeResources.RtRcData, DefaultConfigResourceId, ResourceLanguage, defaultConfig.Data);
@@ -65,7 +79,10 @@ internal static partial class PackageBuilder
                 updater.Commit();
             }
 
-            VerifyOutputResources(temporaryPath, archiveBytes.Length, metadataBytes, defaultConfig.Data, icon);
+            if (archiveStorage == ArchiveStorageMode.Appended)
+                AppendedArchivePayload.Append(temporaryPath, archiveBytes);
+
+            VerifyOutputResources(temporaryPath, archiveBytes, archiveStorage, metadataBytes, defaultConfig.Data, icon);
             File.Move(temporaryPath, package.OutputPath, overwrite);
         }
         catch (PackageBuilderException)
@@ -79,7 +96,7 @@ internal static partial class PackageBuilder
             throw new PackageBuilderException($"Unable to generate package '{package.OutputPath}': {ex.Message}", ex);
         }
 
-        return new PackageBuildResult(package.OutputPath, package.PackageId, startup, archiveBytes.LongLength, archiveIdentity, defaultConfig.Count, icon is not null);
+        return new PackageBuildResult(package.OutputPath, package.PackageId, startup, archiveBytes.LongLength, archiveIdentity, archiveStorage, defaultConfig.Count, icon is not null);
     }
 
     private static void ValidateSpecification(PackageSpecification package, bool overwrite, bool validateOnly)
@@ -113,7 +130,7 @@ internal static partial class PackageBuilder
         VersionResourceBuilder.Validate(package.VersionInfo);
     }
 
-    private static void ValidateTemplate(string templatePath)
+    private static bool ValidateTemplate(string templatePath)
     {
         try
         {
@@ -124,6 +141,7 @@ internal static partial class PackageBuilder
                 throw new PackageBuilderException("Runtime template contains an incomplete archive/metadata resource pair.");
             if (!module.HasNamed(NativeResources.RtGroupIcon, "ZL"))
                 throw new PackageBuilderException("Runtime template does not contain the expected ZL application icon group.");
+            return hasArchive;
         }
         catch (PackageBuilderException) { throw; }
         catch (Exception ex)
@@ -136,7 +154,7 @@ internal static partial class PackageBuilder
     {
         var info = new FileInfo(archivePath);
         if (info.Length <= 0) throw new PackageBuilderException("Game archive is empty.");
-        if (info.Length > Array.MaxLength) throw new PackageBuilderException("Game archive is larger than the package builder's approximately 2 GiB in-memory resource limit.");
+        if (info.Length > Array.MaxLength) throw new PackageBuilderException("Game archive is larger than the package builder's approximately 2 GiB in-memory packaging limit.");
 
         try
         {
@@ -250,7 +268,7 @@ internal static partial class PackageBuilder
         return startup;
     }
 
-    private static byte[] CreateMetadata(PackageSpecification package, string startup, string archiveIdentity, bool hasDefaultConfig)
+    private static byte[] CreateMetadata(PackageSpecification package, string startup, string archiveIdentity, ArchiveStorageMode archiveStorage, bool hasDefaultConfig)
     {
         using var stream = new MemoryStream();
         using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }))
@@ -260,7 +278,10 @@ internal static partial class PackageBuilder
             writer.WriteString("package_id", package.PackageId);
             writer.WriteString("title", package.Title);
             writer.WriteString("startup", startup);
-            writer.WriteNumber("archive_resource", ArchiveResourceId);
+            if (archiveStorage == ArchiveStorageMode.Resource)
+                writer.WriteNumber("archive_resource", ArchiveResourceId);
+            else
+                writer.WriteString("archive_storage", AppendedArchivePayload.StorageName);
             writer.WriteString("archive_identity", archiveIdentity);
             if (hasDefaultConfig) writer.WriteNumber("default_config_resource", DefaultConfigResourceId);
             if (!string.IsNullOrWhiteSpace(package.VersionInfo.CompanyName)) writer.WriteString("publisher", package.VersionInfo.CompanyName);
@@ -279,11 +300,20 @@ internal static partial class PackageBuilder
         return $"{hash:x16}-{bytes.LongLength:x}";
     }
 
-    private static void VerifyOutputResources(string outputPath, int archiveSize, byte[] metadata, byte[]? defaultConfig, IconResources? icon)
+    private static void VerifyOutputResources(string outputPath, byte[] archive, ArchiveStorageMode archiveStorage, byte[] metadata, byte[]? defaultConfig, IconResources? icon)
     {
         using var module = ResourceModule.Load(outputPath);
-        if (module.GetNumericSize(NativeResources.RtRcData, ArchiveResourceId) != archiveSize)
-            throw new PackageBuilderException("Output verification failed: embedded archive resource size does not match.");
+        if (archiveStorage == ArchiveStorageMode.Resource)
+        {
+            if (module.GetNumericSize(NativeResources.RtRcData, ArchiveResourceId) != archive.LongLength)
+                throw new PackageBuilderException("Output verification failed: embedded archive resource size does not match.");
+        }
+        else
+        {
+            if (module.HasNumeric(NativeResources.RtRcData, ArchiveResourceId))
+                throw new PackageBuilderException("Output verification failed: a large package must not map its archive as a PE resource.");
+            AppendedArchivePayload.Verify(outputPath, archive);
+        }
         if (!module.ReadNumeric(NativeResources.RtRcData, MetadataResourceId).SequenceEqual(metadata))
             throw new PackageBuilderException("Output verification failed: embedded metadata does not match.");
         if (defaultConfig is not null && !module.ReadNumeric(NativeResources.RtRcData, DefaultConfigResourceId).SequenceEqual(defaultConfig))

@@ -2,8 +2,9 @@
 
 `makegame.exe` turns a DOS game stored in a ZIP or DOSZ archive into one
 dedicated Windows executable powered by DOSBox Pure Standalone. The generated
-game executable reads its archive directly from its own PE resources. It does
-not reconstruct or extract the packaged game archive to a temporary directory.
+game executable reads its archive directly from memory backed by its own EXE.
+It does not reconstruct or extract the packaged game archive to a temporary
+directory.
 
 The distributed Windows x64 `makegame.exe` is a self-contained .NET 8
 application. A separate .NET installation is not required.
@@ -205,6 +206,13 @@ are accepted; a template containing only one of those resources is rejected.
 The game archive remains compressed inside the generated executable. Disk
 images such as ISO, CUE/BIN, IMG/IMA, and VHD can remain inside the archive and
 use DOSBox Pure's normal image support.
+
+Storage is selected automatically. Archives up to 1.5 GiB are embedded as PE
+resource 101. Larger archives are appended after the PE image with a small
+bounds trailer, then mapped read-only from the executable at runtime. This
+avoids the Windows mapped-image size limit while preserving one executable and
+the no-extraction design. The completed command prints the selected storage
+mode.
 
 ## Automatic startup
 
@@ -631,8 +639,9 @@ inputs:
 ```
 
 The builder writes a temporary executable beside the requested output, updates
-its PE resources, reloads and verifies the result, and only then moves it into
-place. Failed packaging removes the temporary output.
+its PE resources, writes a large appended payload when required, reloads and
+verifies every stored byte, and only then moves it into place. Failed packaging
+removes the temporary output.
 
 ## Generated package behavior
 

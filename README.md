@@ -26,7 +26,7 @@ Phase 3 embeds a license-safe smoke DOSZ as Windows `RCDATA`. When the executabl
 
 The Release executable continued to mount and execute the embedded DOSZ while the build-source `.dosz` was temporarily absent. Its `DOSBOX.BAT` wrote `PHASE3.OK`, and the existing union drive persisted the result in `embedded.pure.zip`. Explicit external content and the Phase 2 `-memory-archive` mode remain functional.
 
-Phase 7 adds the `makegame` command-line builder. It validates and embeds a selected ZIP/DOSZ, generates matching metadata, converts an optional PNG into multi-size Windows application-icon resources, updates Windows version information, and can embed a complete `DOSBoxPure.cfg` as package defaults. The next milestone is Phase 8 compatibility testing.
+Phase 7 adds the `makegame` command-line builder. It validates and embeds a selected ZIP/DOSZ, generates matching metadata, converts an optional PNG into multi-size Windows application-icon resources, updates Windows version information, and can embed a complete `DOSBoxPure.cfg` as package defaults. Archives up to 1.5 GiB use PE resource 101; larger archives are appended to the same executable and mapped directly at runtime so they do not push the Windows PE image over its loader limit. The next milestone is Phase 8 compatibility testing.
 
 ---
 
@@ -587,9 +587,9 @@ These defaults are scoped to automatic embedded-resource startup. Explicit exter
 ## Phase 6 — Package Metadata (complete)
 
 The executable now embeds a separate JSON package description as Windows
-resource `IDR_EMBEDDED_METADATA` (`RCDATA`, numeric ID `102`). The game archive
-remains the independent `IDR_EMBEDDED_ARCHIVE` resource (`RCDATA`, numeric ID
-`101`). The development fixture is:
+resource `IDR_EMBEDDED_METADATA` (`RCDATA`, numeric ID `102`). Normal-size game
+archives remain the independent `IDR_EMBEDDED_ARCHIVE` resource (`RCDATA`,
+numeric ID `101`). The development fixture is:
 
 ```json
 {
@@ -617,6 +617,12 @@ disconnect existing saves as long as the package retains its `package_id`.
 using the existing `<fnv1a64>-<size-hex>` identity. This is a packaging
 consistency check, not a cryptographic signature; a builder must update it when
 the archive changes while retaining the stable `package_id`.
+
+For archives larger than 1.5 GiB, metadata uses `"archive_storage": "appended"`
+instead of `archive_resource`. The builder places the compressed archive after
+the PE image with a bounds-checked 32-byte trailer. The runtime maps those bytes
+read-only from its own executable and passes the mapped memory to DOSBox Pure;
+it does not extract or reconstruct an archive file.
 
 Phase 7-generated metadata may additionally use `default_config_resource: 103`
 to identify an in-memory package-default configuration. The optional UTF-8

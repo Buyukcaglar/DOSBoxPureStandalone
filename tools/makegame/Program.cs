@@ -23,6 +23,7 @@ internal static class Program
             Console.WriteLine($"Package ID: {result.PackageId}");
             Console.WriteLine($"Startup: {result.Startup}");
             Console.WriteLine($"Archive: {result.ArchiveSize:N0} bytes ({result.ArchiveIdentity})");
+            Console.WriteLine($"Archive storage: {(result.ArchiveStorage == ArchiveStorageMode.Resource ? "PE resource" : "appended mapped payload")}");
             Console.WriteLine($"Default configuration: {result.DefaultConfigCount} value(s)");
             Console.WriteLine($"Custom icon: {(result.HasCustomIcon ? "yes" : "no")}");
             return 0;

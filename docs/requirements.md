@@ -791,6 +791,22 @@ MANDATORY
 
 ---
 
+## REQ-PE-004 — Large-archive executable layout
+
+An archive larger than 1.5 GiB must not be placed in a mapped PE resource when
+doing so would make the executable unloadable. The builder must append the
+compressed archive to the same executable, include bounds-checked location
+metadata, and the runtime must map that byte range read-only from its own file.
+This path must not extract or reconstruct the archive or an internal disk image.
+
+Status:
+
+```text
+MANDATORY — COMPLETE
+```
+
+---
+
 # 12. Package Metadata Requirements
 
 ## REQ-META-001 — Format version
@@ -876,10 +892,10 @@ as an emulator option.
 
 ## REQ-META-005 — Archive binding
 
-Present metadata must identify the embedded archive resource and must carry an
-identity matching the linked archive bytes. This prevents a resource-update
-workflow from accidentally pairing one game's metadata and persistence ID with
-another game's archive.
+Present metadata must identify the embedded archive storage and must carry an
+identity for the packaged archive. This prevents a packaging workflow from
+accidentally pairing one game's metadata and persistence ID with another game's
+archive.
 
 Format version 1 uses:
 
@@ -890,9 +906,21 @@ Format version 1 uses:
 }
 ```
 
+Large packages instead use:
+
+```json
+{
+  "archive_storage": "appended",
+  "archive_identity": "<fnv1a64>-<size-hex>"
+}
+```
+
 The identity is a consistency guard, not a cryptographic signature. It must be
 updated when archive content changes while `package_id` remains stable for the
-same package.
+same package. The builder byte-verifies either storage form. Runtime resource
+packages compare the full identity; appended packages validate their trailer
+bounds and encoded identity size without scanning the complete large archive at
+startup.
 
 Status:
 
@@ -1108,7 +1136,7 @@ MANDATORY — PHASE 7 COMPLETE
 
 The package builder must accept a `--text-mode` switch and an equivalent
 boolean manifest field named `text_mode`. Enabling either must ensure that the
-archive embedded as resource 101 contains exactly one root-level
+archive stored in the generated executable contains exactly one root-level
 `TEXTMODE.DBP` marker so the existing runtime text-presentation path is used.
 The option applies both to a game that remains in text mode, such as KROZ, and
 to a graphical game with required interactive text-mode startup screens, such

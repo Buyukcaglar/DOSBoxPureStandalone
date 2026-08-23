@@ -498,12 +498,13 @@ Each generated executable contains a small JSON metadata structure in
 }
 ```
 
-The archive and metadata are separate PE resources. `package_id` is stable
-package identity and determines persistence; `archive_identity` changes with
-the linked archive and guards against an incomplete resource update. The
-runtime reads metadata directly from the PE mapping and does not reconstruct
-it as a physical file. `default_config_resource` is emitted only when the
-package builder embeds a default DOSBox Pure configuration.
+For archives up to 1.5 GiB, archive and metadata are separate PE resources.
+Larger packages replace `archive_resource` with `"archive_storage": "appended"`.
+`package_id` is stable package identity and determines persistence;
+`archive_identity` changes with the linked archive and guards packaging
+consistency. The runtime reads metadata directly from the PE mapping and does
+not reconstruct it as a physical file. `default_config_resource` is emitted
+only when the package builder embeds a default DOSBox Pure configuration.
 
 Additional optional fields may include:
 
@@ -596,7 +597,7 @@ graphical games with an intentional interactive text stage:
 
 - embedded packages default to graphics presentation and reveal immediately once the packaged program enters a graphics video mode
 - a package that requires an intentional DOS text display opts in with an empty root-level `TEXTMODE.DBP` archive marker, whether it remains in text mode or later enters graphics
-- `makegame --text-mode` and manifest `"text_mode": true` add that marker only to the in-memory archive bytes destined for resource 101; the source ZIP/DOSZ is not changed or reconstructed on disk
+- `makegame --text-mode` and manifest `"text_mode": true` add that marker only to the in-memory archive bytes destined for the selected resource or appended storage; the source ZIP/DOSZ is not changed or reconstructed on disk
 - on entry to a text-mode program, the core snapshots the current visible character/attribute cells
 - text readiness is ignored for the first second, preventing a graphics game's temporary text-page or text-resolution changes from exposing a transitional DOS frame
 - after that dwell, the text display reveals when at least one third of those cells have changed or the program changes the visible text page or text resolution
@@ -662,17 +663,21 @@ PE headers
     +-- DEFAULT_CONFIG (optional)
 ```
 
-The game archive should preferably be appended as an RCDATA resource during the initial implementation.
+Archives up to 1.5 GiB are stored as the initial `RCDATA` resource 101. Larger
+archives use an appended package container because an RCDATA payload increases
+the mapped PE image and can cross the Windows loader's image-size ceiling.
 
-Later versions may evaluate alternative formats such as:
+The large-package layout is:
 
 ```text
-custom PE section
-appended package container
-memory-mapped package segment
+ordinary PE image and resources
+compressed ZIP/DOSZ bytes
+32-byte DBPS archive trailer (magic, offset, size)
 ```
 
-The first implementation should favor simplicity and maintainability over exotic packaging techniques.
+The runtime validates the trailer bounds, creates a read-only file mapping of
+its own executable, and exposes only the archive byte range to DOSBox Pure. No
+archive or disk image is copied to a temporary file.
 
 ---
 
@@ -713,7 +718,7 @@ The packager:
 
 1. copy a clean DOSBox Pure runtime template
 2. optionally add an empty root-level `TEXTMODE.DBP` marker in memory
-3. embed the DOSZ/ZIP archive
+3. store the DOSZ/ZIP archive as resource 101 or an appended mapped payload
 4. embed package metadata
 5. optionally decode PNG and embed a multi-size Windows application icon
 6. update PE version information
@@ -729,9 +734,11 @@ archive/metadata pair.
 Archive validation reads every ZIP member, rejects unsafe or duplicate paths,
 and requires the resolved startup file to exist. Startup resolves from CLI,
 manifest, reserved defaults-JSON `package_startup`, then root `DOSBOX.BAT`.
-Input archive bytes are stored directly as resource 101 by default. With
+Input archives up to 1.5 GiB are stored directly as resource 101. Larger
+archives are appended after resource updates and followed by a fixed trailer;
+the PE image remains small enough for the Windows loader. With
 `--text-mode` or manifest `text_mode`, the builder adds only the empty
-root-level `TEXTMODE.DBP` entry to an in-memory copy before resource embedding.
+root-level `TEXTMODE.DBP` entry to an in-memory copy before final storage.
 It does not alter the source archive, extract its members, or reconstruct an
 archive on disk. If the marker already exists, the original bytes remain
 unchanged.
@@ -1089,10 +1096,13 @@ be the reserved `system` name, and becomes the package-specific Phase 4
 persistence directory. This makes save identity stable across executable
 renames and archive updates.
 
-`archive_resource` must identify numeric resource `101`. `archive_identity`
-must equal `<fnv1a64>-<size-hex>` for the archive resource currently linked
-into the executable. The identity binds metadata and archive versions and
-catches incomplete resource replacement; it is not an authentication or
+Metadata must contain exactly one storage selector. `archive_resource` identifies
+numeric resource `101`; `archive_storage: "appended"` identifies a large archive
+following the PE image. `archive_identity` uses `<fnv1a64>-<size-hex>` for both
+forms. The builder byte-verifies the selected storage before publishing the
+output. At runtime, resource storage retains the complete identity comparison;
+appended storage validates the trailer bounds and identity size without scanning
+the entire large file at startup. The identity is not an authentication or
 tamper-resistance mechanism. A package update retains `package_id` but updates
 `archive_identity`.
 
