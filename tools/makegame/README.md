@@ -93,6 +93,9 @@ makegame.exe game.dosz GAME.exe `
 
 Use `--validate-only` to validate every input without writing an executable.
 Existing output is protected unless `--overwrite` is supplied.
+Validation-only uses a short-lived runtime copy to verify resources and exact
+under-4-GiB capacity, but never copies the game archive into that temporary
+file.
 
 ## Packages that need visible DOS text
 
@@ -114,12 +117,10 @@ makegame.exe game.zip GAME.exe `
   --text-mode
 ```
 
-The builder adds an empty root-level `TEXTMODE.DBP` marker to the archive bytes
-stored in the generated executable. It performs this operation entirely in
-memory and does not modify the source ZIP/DOSZ or create a reconstructed archive
-on disk.
-If the source archive already contains the marker, its bytes are embedded
-unchanged. The manifest equivalent is `"text_mode": true`.
+The builder writes `"text_mode": true` to package metadata and stores the
+source ZIP/DOSZ byte-for-byte unchanged. It does not create a reconstructed
+archive on disk. Existing archives with an empty root-level `TEXTMODE.DBP`
+marker remain supported. The manifest equivalent is `"text_mode": true`.
 
 The decision is based on required visibility and interaction, not on the final
 video mode. Do not enable the option for noninteractive initialization text
@@ -277,11 +278,13 @@ Before writing output, the builder validates:
 - Windows version numbers
 
 The builder writes a temporary executable beside the requested output, updates
-resources, and stores archives up to 1.5 GiB as resource 101. Larger archives
-are appended after the PE image and located through a bounds-checked trailer;
-the runtime maps that range directly without extraction. The builder reloads
-the result, byte-verifies either storage form, and only then moves it into
-place. A failed build removes the temporary file.
+resources, and stores archives up to 1.5 GiB as resource 101. Larger ZIP64
+archives are validated, hashed, appended, and byte-verified with bounded
+streaming buffers. A bounds-checked trailer locates the payload, and the
+runtime maps that range directly without extraction. A failed build removes
+the temporary file. The final executable must remain smaller than 4 GiB because
+Windows rejects larger executable files before startup. The builder measures
+the exact post-resource-update capacity and reports it before appending.
 
 The resulting game executable is unsigned. Updating PE resources invalidates
 any Authenticode signature on the template, so code signing—if required—must

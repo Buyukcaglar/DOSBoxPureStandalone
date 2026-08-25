@@ -1,4 +1,3 @@
-using System.IO.Compression;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -27,9 +26,9 @@ internal static partial class PackageBuilder
     private const int ArchiveResourceId = 101;
     private const int MetadataResourceId = 102;
     private const int DefaultConfigResourceId = 103;
-    private const string TextModeMarker = "TEXTMODE.DBP";
     private const ushort ResourceLanguage = 1033;
     private const long MaxMappedResourceArchiveSize = 1536L * 1024 * 1024;
+    private const long MaxWindowsExecutableSize = uint.MaxValue;
 
     [GeneratedRegex("^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,126}[A-Za-z0-9])?$", RegexOptions.CultureInvariant)]
     private static partial Regex PackageIdPattern();
@@ -40,21 +39,16 @@ internal static partial class PackageBuilder
         var templateContainsArchive = ValidateTemplate(package.TemplatePath);
         var defaultConfig = DefaultConfig.Load(package.DefaultConfigPath, package.Fullscreen, package.LockMouse, package.AspectRatio, package.Cycles, package.CpuType, package.EnableScanlines, package.EnableCrtFilter);
         var startup = NormalizeAndValidateStartup(package.Startup ?? defaultConfig.PackageStartup ?? "DOSBOX.BAT");
-        var archiveBytes = ValidateAndReadArchive(package.ArchivePath, startup);
-        if (package.TextMode) archiveBytes = EnsureTextModeMarker(archiveBytes);
-        var archiveIdentity = CalculateArchiveIdentity(archiveBytes);
-        var archiveStorage = archiveBytes.LongLength > MaxMappedResourceArchiveSize
+        using var archive = GameArchive.OpenValidated(package.ArchivePath, startup);
+        var archiveStorage = archive.Length > MaxMappedResourceArchiveSize
             ? ArchiveStorageMode.Appended
             : ArchiveStorageMode.Resource;
         var icon = package.IconPath is null ? null : IconResourceBuilder.FromPng(package.IconPath);
-        var metadataBytes = CreateMetadata(package, startup, archiveIdentity, archiveStorage, defaultConfig.Data is not null);
+        var metadataBytes = CreateMetadata(package, startup, archive.Identity, archiveStorage, defaultConfig.Data is not null);
         var versionBytes = VersionResourceBuilder.Build(package);
 
-        if (validateOnly)
-            return new PackageBuildResult(package.OutputPath, package.PackageId, startup, archiveBytes.LongLength, archiveIdentity, archiveStorage, defaultConfig.Count, icon is not null);
-
-        var outputDirectory = Path.GetDirectoryName(package.OutputPath)!;
-        Directory.CreateDirectory(outputDirectory);
+        var outputDirectory = validateOnly ? Path.GetTempPath() : Path.GetDirectoryName(package.OutputPath)!;
+        if (!validateOnly) Directory.CreateDirectory(outputDirectory);
         var temporaryPath = Path.Combine(outputDirectory, $".{Path.GetFileNameWithoutExtension(package.OutputPath)}.{Guid.NewGuid():N}.tmp.exe");
 
         try
@@ -63,7 +57,7 @@ internal static partial class PackageBuilder
             using (var updater = new ResourceUpdater(temporaryPath))
             {
                 if (archiveStorage == ArchiveStorageMode.Resource)
-                    updater.SetNumeric(NativeResources.RtRcData, ArchiveResourceId, ResourceLanguage, archiveBytes);
+                    updater.SetNumeric(NativeResources.RtRcData, ArchiveResourceId, ResourceLanguage, archive.ReadAllBytes());
                 else if (templateContainsArchive)
                     updater.DeleteNumeric(NativeResources.RtRcData, ArchiveResourceId, ResourceLanguage);
                 updater.SetNumeric(NativeResources.RtRcData, MetadataResourceId, ResourceLanguage, metadataBytes);
@@ -79,10 +73,23 @@ internal static partial class PackageBuilder
                 updater.Commit();
             }
 
+            VerifyOutputResources(temporaryPath, archive.Length, archiveStorage, metadataBytes, defaultConfig.Data, icon);
             if (archiveStorage == ArchiveStorageMode.Appended)
-                AppendedArchivePayload.Append(temporaryPath, archiveBytes);
-
-            VerifyOutputResources(temporaryPath, archiveBytes, archiveStorage, metadataBytes, defaultConfig.Data, icon);
+            {
+                EnsureAppendedExecutableFitsWindows(temporaryPath, archive.Length);
+                if (validateOnly)
+                {
+                    DeleteValidationTemporary(temporaryPath);
+                    return new PackageBuildResult(package.OutputPath, package.PackageId, startup, archive.Length, archive.Identity, archiveStorage, defaultConfig.Count, icon is not null);
+                }
+                AppendedArchivePayload.Append(temporaryPath, archive);
+                AppendedArchivePayload.Verify(temporaryPath, archive);
+            }
+            else if (validateOnly)
+            {
+                DeleteValidationTemporary(temporaryPath);
+                return new PackageBuildResult(package.OutputPath, package.PackageId, startup, archive.Length, archive.Identity, archiveStorage, defaultConfig.Count, icon is not null);
+            }
             File.Move(temporaryPath, package.OutputPath, overwrite);
         }
         catch (PackageBuilderException)
@@ -96,7 +103,7 @@ internal static partial class PackageBuilder
             throw new PackageBuilderException($"Unable to generate package '{package.OutputPath}': {ex.Message}", ex);
         }
 
-        return new PackageBuildResult(package.OutputPath, package.PackageId, startup, archiveBytes.LongLength, archiveIdentity, archiveStorage, defaultConfig.Count, icon is not null);
+        return new PackageBuildResult(package.OutputPath, package.PackageId, startup, archive.Length, archive.Identity, archiveStorage, defaultConfig.Count, icon is not null);
     }
 
     private static void ValidateSpecification(PackageSpecification package, bool overwrite, bool validateOnly)
@@ -150,99 +157,6 @@ internal static partial class PackageBuilder
         }
     }
 
-    private static byte[] ValidateAndReadArchive(string archivePath, string startup)
-    {
-        var info = new FileInfo(archivePath);
-        if (info.Length <= 0) throw new PackageBuilderException("Game archive is empty.");
-        if (info.Length > Array.MaxLength) throw new PackageBuilderException("Game archive is larger than the package builder's approximately 2 GiB in-memory packaging limit.");
-
-        try
-        {
-            using var file = File.Open(archivePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            using var archive = new ZipArchive(file, ZipArchiveMode.Read, false);
-            if (archive.Entries.Count == 0) throw new PackageBuilderException("Game archive contains no entries.");
-
-            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            var buffer = new byte[1024 * 1024];
-            foreach (var entry in archive.Entries)
-            {
-                ValidateArchivePath(entry.FullName);
-                var normalizedName = entry.FullName.Replace('\\', '/');
-                if (!names.Add(normalizedName))
-                    throw new PackageBuilderException($"Game archive contains a duplicate path: {entry.FullName}");
-                if (entry.FullName.EndsWith('/') || entry.FullName.EndsWith('\\')) continue;
-                files.Add(normalizedName);
-
-                using var entryStream = entry.Open();
-                long bytesRead = 0;
-                int read;
-                while ((read = entryStream.Read(buffer, 0, buffer.Length)) != 0) bytesRead += read;
-                if (bytesRead != entry.Length)
-                    throw new PackageBuilderException($"Archive entry length mismatch: {entry.FullName}");
-            }
-            var archiveStartup = startup.Replace('\\', '/');
-            if (!files.Contains(archiveStartup))
-            {
-                if (startup.Equals("DOSBOX.BAT", StringComparison.OrdinalIgnoreCase))
-                    throw new PackageBuilderException("Game archive must contain exactly one root-level DOSBOX.BAT, or specify an existing .EXE, .COM or .BAT with --startup, manifest startup, or default-config package_startup.");
-                throw new PackageBuilderException($"Configured startup file was not found in the game archive: {startup}");
-            }
-        }
-        catch (PackageBuilderException) { throw; }
-        catch (InvalidDataException ex)
-        {
-            throw new PackageBuilderException($"Game archive is invalid or uses unsupported ZIP features: {ex.Message}", ex);
-        }
-        catch (Exception ex)
-        {
-            throw new PackageBuilderException($"Unable to validate game archive: {ex.Message}", ex);
-        }
-
-        return File.ReadAllBytes(archivePath);
-    }
-
-    private static byte[] EnsureTextModeMarker(byte[] archiveBytes)
-    {
-        try
-        {
-            using (var source = new MemoryStream(archiveBytes, false))
-            using (var archive = new ZipArchive(source, ZipArchiveMode.Read, false))
-            {
-                if (archive.Entries.Any(entry => entry.FullName.Equals(TextModeMarker, StringComparison.OrdinalIgnoreCase)))
-                    return archiveBytes;
-            }
-
-            const int markerOverheadAllowance = 4096;
-            if (archiveBytes.Length > Array.MaxLength - markerOverheadAllowance)
-                throw new PackageBuilderException("Game archive is too large to add the text-mode marker in memory.");
-
-            using var output = new MemoryStream(archiveBytes.Length + markerOverheadAllowance);
-            output.Write(archiveBytes);
-            output.Position = 0;
-            using (var archive = new ZipArchive(output, ZipArchiveMode.Update, true))
-            {
-                var marker = archive.CreateEntry(TextModeMarker, CompressionLevel.NoCompression);
-                marker.LastWriteTime = new DateTimeOffset(1980, 1, 1, 0, 0, 0, TimeSpan.Zero);
-            }
-            return output.ToArray();
-        }
-        catch (PackageBuilderException) { throw; }
-        catch (Exception ex)
-        {
-            throw new PackageBuilderException($"Unable to add the text-mode marker to the embedded archive: {ex.Message}", ex);
-        }
-    }
-
-    private static void ValidateArchivePath(string path)
-    {
-        if (string.IsNullOrEmpty(path) || path[0] is '/' or '\\' || path.Contains(':') || path.Contains('\0'))
-            throw new PackageBuilderException($"Archive contains an unsafe path: {path}");
-        var segments = path.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
-        if (segments.Any(segment => segment is "." or ".."))
-            throw new PackageBuilderException($"Archive contains a traversal path: {path}");
-    }
-
     private static string NormalizeAndValidateStartup(string startup)
     {
         startup = startup.Trim().Replace('/', '\\');
@@ -284,6 +198,7 @@ internal static partial class PackageBuilder
                 writer.WriteString("archive_storage", AppendedArchivePayload.StorageName);
             writer.WriteString("archive_identity", archiveIdentity);
             if (hasDefaultConfig) writer.WriteNumber("default_config_resource", DefaultConfigResourceId);
+            if (package.TextMode) writer.WriteBoolean("text_mode", true);
             if (!string.IsNullOrWhiteSpace(package.VersionInfo.CompanyName)) writer.WriteString("publisher", package.VersionInfo.CompanyName);
             if (!string.IsNullOrWhiteSpace(package.VersionInfo.ProductVersion)) writer.WriteString("version", package.VersionInfo.ProductVersion);
             writer.WriteEndObject();
@@ -291,28 +206,18 @@ internal static partial class PackageBuilder
         return stream.ToArray();
     }
 
-    private static string CalculateArchiveIdentity(byte[] bytes)
-    {
-        const ulong offset = 14695981039346656037UL;
-        const ulong prime = 1099511628211UL;
-        var hash = offset;
-        foreach (var value in bytes) hash = unchecked((hash ^ value) * prime);
-        return $"{hash:x16}-{bytes.LongLength:x}";
-    }
-
-    private static void VerifyOutputResources(string outputPath, byte[] archive, ArchiveStorageMode archiveStorage, byte[] metadata, byte[]? defaultConfig, IconResources? icon)
+    private static void VerifyOutputResources(string outputPath, long archiveSize, ArchiveStorageMode archiveStorage, byte[] metadata, byte[]? defaultConfig, IconResources? icon)
     {
         using var module = ResourceModule.Load(outputPath);
         if (archiveStorage == ArchiveStorageMode.Resource)
         {
-            if (module.GetNumericSize(NativeResources.RtRcData, ArchiveResourceId) != archive.LongLength)
+            if (module.GetNumericSize(NativeResources.RtRcData, ArchiveResourceId) != archiveSize)
                 throw new PackageBuilderException("Output verification failed: embedded archive resource size does not match.");
         }
         else
         {
             if (module.HasNumeric(NativeResources.RtRcData, ArchiveResourceId))
                 throw new PackageBuilderException("Output verification failed: a large package must not map its archive as a PE resource.");
-            AppendedArchivePayload.Verify(outputPath, archive);
         }
         if (!module.ReadNumeric(NativeResources.RtRcData, MetadataResourceId).SequenceEqual(metadata))
             throw new PackageBuilderException("Output verification failed: embedded metadata does not match.");
@@ -329,9 +234,28 @@ internal static partial class PackageBuilder
             throw new PackageBuilderException("Output verification failed: version resource is missing.");
     }
 
+    private static void EnsureAppendedExecutableFitsWindows(string executablePath, long archiveSize)
+    {
+        var runtimeSize = new FileInfo(executablePath).Length;
+        var maximumArchiveSize = MaxWindowsExecutableSize - runtimeSize - AppendedArchivePayload.TrailerSize;
+        if (archiveSize <= maximumArchiveSize) return;
+
+        var generatedSize = runtimeSize + archiveSize + AppendedArchivePayload.TrailerSize;
+        throw new PackageBuilderException(
+            $"Generated executable would be {generatedSize:N0} bytes. Windows cannot launch an executable whose total file size is 4 GiB or larger. " +
+            $"With the selected runtime, metadata, configuration, and icon, the archive must be no larger than {maximumArchiveSize:N0} bytes. " +
+            "Reduce the archive, convert raw MODE1/2352 CD images to ISO where compatible, or distribute the game in more than one file.");
+    }
+
     private static void RequireFile(string path, string label)
     {
         if (!File.Exists(path)) throw new PackageBuilderException($"{label} not found: {path}");
+    }
+
+    private static void DeleteValidationTemporary(string path)
+    {
+        try { File.Delete(path); }
+        catch (Exception ex) { throw new PackageBuilderException($"Validation succeeded, but its temporary runtime copy could not be removed: {ex.Message}", ex); }
     }
 
     private static void TryDelete(string path)

@@ -200,8 +200,8 @@ are accepted; a template containing only one of those resources is rejected.
 - rejects duplicate and unsafe paths;
 - rejects absolute paths, drive-qualified paths, and `.` or `..` segments;
 - verifies that the selected startup file exists; and
-- currently loads the archive into memory, imposing an approximately 2 GiB
-  practical maximum.
+- validates, identifies, writes, and verifies large archives with bounded
+  streaming buffers rather than loading the whole archive into memory.
 
 The game archive remains compressed inside the generated executable. Disk
 images such as ISO, CUE/BIN, IMG/IMA, and VHD can remain inside the archive and
@@ -213,6 +213,13 @@ bounds trailer, then mapped read-only from the executable at runtime. This
 avoids the Windows mapped-image size limit while preserving one executable and
 the no-extraction design. The completed command prints the selected storage
 mode.
+
+ZIP64 inputs are supported by the Windows x64 release, but the runtime,
+resources, archive, and trailer must together remain smaller than 4 GiB.
+Windows rejects an executable of 4 GiB or larger before the runtime can start.
+The builder calculates the exact capacity after resource updates and reports
+the maximum archive size when a package cannot fit. Individual files inside
+the ZIP must also remain compatible with DOSBox Pure's archive reader.
 
 ## Automatic startup
 
@@ -319,13 +326,10 @@ For KROZ, which remains in text mode:
   --text-mode
 ```
 
-The builder adds an empty root-level `TEXTMODE.DBP` marker to the archive bytes
-embedded in the executable.
-
-The operation occurs entirely in memory. The source ZIP/DOSZ is not modified,
-and no reconstructed archive is written to disk. A manually supplied root-level
-`TEXTMODE.DBP` remains supported; when it already exists, `--text-mode` leaves
-the archive bytes unchanged. Do not use the option merely for noninteractive
+The builder writes `"text_mode": true` to package metadata and stores the
+source ZIP/DOSZ byte-for-byte unchanged. No reconstructed archive is written
+to disk. A manually supplied root-level `TEXTMODE.DBP` remains supported for
+compatibility. Do not use the option merely for noninteractive
 initialization messages that should stay hidden. Beneath a Steel Sky has no
 required text-mode interaction and does not need it; Civilization does because
 the user must see and answer its startup questions.
@@ -625,6 +629,11 @@ Validate first without producing output:
 .\makegame.exe ".\package.json" --validate-only
 ```
 
+Validation also applies the selected metadata, icon, configuration, and version
+resources to a short-lived runtime copy so the exact under-4-GiB capacity can
+be checked. The temporary runtime copy is removed before the command returns;
+the game archive is never copied into it during validation-only mode.
+
 Build when validation succeeds:
 
 ```powershell
@@ -639,9 +648,9 @@ inputs:
 ```
 
 The builder writes a temporary executable beside the requested output, updates
-its PE resources, writes a large appended payload when required, reloads and
-verifies every stored byte, and only then moves it into place. Failed packaging
-removes the temporary output.
+its PE resources, streams a large appended payload when required, compares
+every stored byte with the source, and only then moves it into place. Failed
+packaging removes the temporary output.
 
 ## Generated package behavior
 
@@ -681,9 +690,21 @@ the startup batch. For a nested ZIP, use lowercase `-t zip` as shown earlier.
 ### A required DOS text screen remains hidden
 
 Rebuild with `--text-mode`, set manifest `"text_mode": true`, or add an empty
-root-level `TEXTMODE.DBP` marker manually. This applies both to fully text-mode
-games such as KROZ and graphical games with required interactive text startup
-screens such as Civilization. Omit it for noninteractive transitional text.
+root-level `TEXTMODE.DBP` marker manually for legacy compatibility. This applies
+both to fully text-mode games such as KROZ and graphical games with required
+interactive text startup screens such as Civilization. Omit it for
+noninteractive transitional text.
+
+### “Windows cannot launch an executable whose total file size is 4 GiB or larger”
+
+This is a Windows loader limit, not an available-memory problem. The message
+reports the exact maximum archive size after accounting for the selected
+runtime, metadata, configuration, icon, and 32-byte trailer. Reduce the ZIP or
+use a multi-file distribution. If a game uses single-track MODE1/2352 BIN/CUE
+images, converting them to ISO can remove raw-sector error-correction overhead,
+but only do so after confirming the title does not require audio tracks or raw
+sector data. `makegame` never performs this game-specific conversion
+automatically.
 
 ### Windows SmartScreen or antivirus warning
 

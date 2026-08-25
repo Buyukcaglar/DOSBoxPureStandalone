@@ -202,10 +202,13 @@ internal sealed class CommandLine
         Console.WriteLine("                         386dx-33, 486dx-33, 486dx2-66, pentium-100,");
         Console.WriteLine("                         pentium-ii-300, pentium-iii-600, athlon-1200");
         Console.WriteLine("  --cpu-type <type>     auto, 386, 386_slow, 386_prefetch, 486_slow, or pentium_slow");
-        Console.WriteLine("  --text-mode           Reveal intentional or interactive DOS text screens");
+        Console.WriteLine("  --text-mode           Enable intentional or interactive DOS text startup screens");
         Console.WriteLine("  --scanlines           Scanlines; sharpest image, no curvature/corners");
         Console.WriteLine("  --crt-filter          TV CRT; sharpest image, no curvature/corners");
         Console.WriteLine("  --validate-only       Validate inputs without producing an executable");
         Console.WriteLine("  --overwrite           Replace an existing output executable");
+        Console.WriteLine();
+        Console.WriteLine("Large ZIP64 archives are validated, hashed, appended, and verified as streams.");
+        Console.WriteLine("The final executable must remain smaller than 4 GiB due to a Windows loader limit.");
     }
 }

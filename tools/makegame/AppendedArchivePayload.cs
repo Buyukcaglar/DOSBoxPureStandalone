@@ -5,8 +5,7 @@ namespace DosBoxPureStandalone.MakeGame;
 internal static class AppendedArchivePayload
 {
     public const string StorageName = "appended";
-    private const int TrailerSize = 32;
-    private const int CopyBufferSize = 1024 * 1024;
+    public const int TrailerSize = 32;
     private static ReadOnlySpan<byte> Magic =>
     [
         (byte)'D', (byte)'B', (byte)'P', (byte)'S',
@@ -14,22 +13,22 @@ internal static class AppendedArchivePayload
         (byte)'\r', (byte)'\n', 0x1a, 0,
     ];
 
-    public static void Append(string executablePath, byte[] archive)
+    public static void Append(string executablePath, GameArchive archive)
     {
         using var stream = new FileStream(executablePath, FileMode.Open, FileAccess.Write, FileShare.None);
         stream.Position = stream.Length;
         var archiveOffset = stream.Position;
-        stream.Write(archive);
+        archive.CopyTo(stream);
 
         Span<byte> trailer = stackalloc byte[TrailerSize];
         Magic.CopyTo(trailer);
         BinaryPrimitives.WriteUInt64LittleEndian(trailer[16..24], checked((ulong)archiveOffset));
-        BinaryPrimitives.WriteUInt64LittleEndian(trailer[24..32], checked((ulong)archive.LongLength));
+        BinaryPrimitives.WriteUInt64LittleEndian(trailer[24..32], checked((ulong)archive.Length));
         stream.Write(trailer);
         stream.Flush(true);
     }
 
-    public static void Verify(string executablePath, byte[] expectedArchive)
+    public static void Verify(string executablePath, GameArchive expectedArchive)
     {
         using var stream = new FileStream(executablePath, FileMode.Open, FileAccess.Read, FileShare.Read);
         if (stream.Length < TrailerSize)
@@ -43,19 +42,9 @@ internal static class AppendedArchivePayload
 
         var archiveOffset = checked((long)BinaryPrimitives.ReadUInt64LittleEndian(trailer[16..24]));
         var archiveSize = checked((long)BinaryPrimitives.ReadUInt64LittleEndian(trailer[24..32]));
-        if (archiveOffset < 0 || archiveSize != expectedArchive.LongLength || archiveOffset + archiveSize + TrailerSize != stream.Length)
+        if (archiveOffset < 0 || archiveSize != expectedArchive.Length || archiveSize > stream.Length - TrailerSize || archiveOffset != stream.Length - TrailerSize - archiveSize)
             throw new PackageBuilderException("Output verification failed: appended archive bounds do not match.");
 
-        stream.Position = archiveOffset;
-        var buffer = new byte[CopyBufferSize];
-        var compared = 0;
-        while (compared != expectedArchive.Length)
-        {
-            var count = Math.Min(buffer.Length, expectedArchive.Length - compared);
-            stream.ReadExactly(buffer.AsSpan(0, count));
-            if (!buffer.AsSpan(0, count).SequenceEqual(expectedArchive.AsSpan(compared, count)))
-                throw new PackageBuilderException("Output verification failed: appended archive data does not match.");
-            compared += count;
-        }
+        expectedArchive.VerifyEqual(stream, archiveOffset);
     }
 }

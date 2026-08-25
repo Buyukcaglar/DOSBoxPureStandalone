@@ -29,6 +29,12 @@ template; use `makegame.exe` to create a dedicated game executable.
 The included `makegame.exe` carries its required .NET 8 runtime. Users do not
 need to install .NET separately.
 
+Large archives are streamed during validation and packaging instead of being
+loaded into one managed byte array. The final dedicated game executable must
+nevertheless remain smaller than 4 GiB because Windows rejects larger
+executable files before application startup. `makegame --validate-only` reports
+the exact available archive capacity for the selected options.
+
 ## Important files
 
 ```text

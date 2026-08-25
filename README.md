@@ -26,7 +26,7 @@ Phase 3 embeds a license-safe smoke DOSZ as Windows `RCDATA`. When the executabl
 
 The Release executable continued to mount and execute the embedded DOSZ while the build-source `.dosz` was temporarily absent. Its `DOSBOX.BAT` wrote `PHASE3.OK`, and the existing union drive persisted the result in `embedded.pure.zip`. Explicit external content and the Phase 2 `-memory-archive` mode remain functional.
 
-Phase 7 adds the `makegame` command-line builder. It validates and embeds a selected ZIP/DOSZ, generates matching metadata, converts an optional PNG into multi-size Windows application-icon resources, updates Windows version information, and can embed a complete `DOSBoxPure.cfg` as package defaults. Archives up to 1.5 GiB use PE resource 101; larger archives are appended to the same executable and mapped directly at runtime so they do not push the Windows PE image over its loader limit. The next milestone is Phase 8 compatibility testing.
+Phase 7 adds the `makegame` command-line builder. It validates and embeds a selected ZIP/DOSZ, generates matching metadata, converts an optional PNG into multi-size Windows application-icon resources, updates Windows version information, and can embed a complete `DOSBoxPure.cfg` as package defaults. Archives up to 1.5 GiB use PE resource 101; larger ZIP64 archives are validated, identified, appended, and byte-verified as streams, then mapped directly at runtime so they do not push the Windows PE image over its loader limit or require a complete in-memory copy. Because Windows rejects executable files of 4 GiB or larger before application startup, the finished single EXE must remain below that separate operating-system ceiling. The next milestone is Phase 8 compatibility testing.
 
 ---
 
@@ -576,7 +576,7 @@ When content is selected from the embedded PE resource, the standalone frontend 
 
 Embedded packages default to graphics presentation and become visible only when they enter a graphics video mode. After readiness is detected, the frontend waits for three fresh core-video submissions before exposing the hardware-rendered surface, because the emulated video mode can change before the surface receives its new pixels. This deterministic default prevents both slow text initialization and a stale final DOS frame from flashing.
 
-Packages that require visible DOS text opt in with `makegame --text-mode`, manifest `"text_mode": true`, or an empty root-level `TEXTMODE.DBP` marker already present in the source archive. This covers both a game such as KROZ that remains in text mode and a graphical game such as Sid Meier's Civilization whose startup asks questions in text mode before entering graphics. It is not needed for noninteractive initialization text; Beneath a Steel Sky has no required text-mode interaction and therefore omits it. The builder adds the marker only to the in-memory archive bytes embedded in the generated executable; it does not modify or reconstruct the source archive on disk. Marked text screens become visible after remaining in text mode for one second and replacing at least one third of the original shell cells; sparse text applications use a 15-second safety fallback.
+Packages that require visible DOS text opt in with `makegame --text-mode`, manifest `"text_mode": true`, or a legacy empty root-level `TEXTMODE.DBP` marker already present in the source archive. This covers both a game such as KROZ that remains in text mode and a graphical game such as Sid Meier's Civilization whose startup asks questions in text mode before entering graphics. It is not needed for noninteractive initialization text; Beneath a Steel Sky has no required text-mode interaction and therefore omits it. New packages record the choice in package metadata, so the builder embeds the source ZIP/DOSZ byte-for-byte unchanged. Text-mode screens become visible after remaining in text mode for one second and replacing at least one third of the original shell cells; sparse text applications use a 15-second safety fallback.
 
 The embedded-package defaults also prevent the `Unable to exit top DOS shell` warning after the game returns to `DOSBOX.BAT`.
 
@@ -689,8 +689,7 @@ The builder performs:
 ```text
 validated runtime template
   + validated ZIP/DOSZ and startup target
-  + optional in-memory TEXTMODE.DBP marker
-  + generated package metadata
+  + generated package metadata (including optional text-mode declaration)
   + optional PNG-derived Windows icon set
   + optional DOSBoxPure.cfg defaults
   + generated Windows version resource
@@ -757,9 +756,10 @@ matching values in `--config`.
 Packages that need intentional DOS text to be visible can use `--text-mode`.
 That includes fully text-mode games such as KROZ and graphical games with
 interactive text-mode startup screens such as Civilization. The manifest
-equivalent is `"text_mode": true`. This inserts an empty root-level `TEXTMODE.DBP` marker into
-the embedded archive bytes without changing the source ZIP/DOSZ or writing a
-temporary archive. Existing manually marked archives remain compatible. Omit
+equivalent is `"text_mode": true`. The builder records the declaration in
+package metadata and embeds the source ZIP/DOSZ byte-for-byte unchanged.
+Existing archives with a manually supplied root-level `TEXTMODE.DBP` marker
+remain compatible. Omit
 the option for noninteractive transitional text, as with Beneath a Steel Sky.
 
 The defaults JSON may also contain the reserved builder directive
