@@ -35,6 +35,11 @@ nevertheless remain smaller than 4 GiB because Windows rejects larger
 executable files before application startup. `makegame --validate-only` reports
 the exact available archive capacity for the selected options.
 
+The bundled x64 runtime also supports nested ZIP virtual CDs larger than 2 GiB.
+Use lowercase `IMGMOUNT D C:\CD.ZIP -t zip` in the package startup batch. Store
+the nested ZIP without further compression in the outer archive when practical;
+it remains memory/archive-backed and is not reconstructed on disk.
+
 ## Important files
 
 ```text

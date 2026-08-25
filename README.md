@@ -28,6 +28,14 @@ The Release executable continued to mount and execute the embedded DOSZ while th
 
 Phase 7 adds the `makegame` command-line builder. It validates and embeds a selected ZIP/DOSZ, generates matching metadata, converts an optional PNG into multi-size Windows application-icon resources, updates Windows version information, and can embed a complete `DOSBoxPure.cfg` as package defaults. Archives up to 1.5 GiB use PE resource 101; larger ZIP64 archives are validated, identified, appended, and byte-verified as streams, then mapped directly at runtime so they do not push the Windows PE image over its loader limit or require a complete in-memory copy. Because Windows rejects executable files of 4 GiB or larger before application startup, the finished single EXE must remain below that separate operating-system ceiling. The next milestone is Phase 8 compatibility testing.
 
+Large nested ZIP virtual CDs are also supported. `IMGMOUNT D C:\CD.ZIP -t zip`
+preserves 64-bit positions through local, ZIP, union-overlay and mirror file
+handles before registering D with MSCDEX. Validation packaged a 3,106,790,056-byte
+Ripper archive containing a 3,090,933,320-byte `CD.ZIP`; Ripper detected the
+virtual CD-ROM and entered the game without reconstructing the nested ZIP on
+disk. Individual DOS-visible ZIP members remain limited to 4 GiB minus one byte,
+and the complete generated executable must still remain below 4 GiB.
+
 ---
 
 # Goals

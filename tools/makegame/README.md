@@ -264,6 +264,30 @@ Consequently, a user's saved choice remains effective on later launches.
 Persistence paths and the embedded archive selection are controlled by the
 runtime and are not redirected by values copied from a development config.
 
+## Nested ZIP virtual CDs
+
+An installed game can keep its original data-CD files in a ZIP stored inside
+the outer game package. Mount that nested archive from the startup batch with
+the bundled ZIP virtual-CD type:
+
+```bat
+@ECHO OFF
+IMGMOUNT D C:\CD.ZIP -t zip > NUL
+RIPPER.EXE
+```
+
+The type name is case-sensitive; use lowercase `-t zip`. The Windows x64
+runtime preserves 64-bit positions for nested ZIP containers larger than
+2 GiB and registers the resulting drive with MSCDEX. Individual DOS-visible
+members remain limited to 4 GiB minus one byte, and the finished generated EXE
+must remain smaller than 4 GiB.
+
+Store an already-compressed nested ZIP without additional compression in the
+outer ZIP when practical. Deflating it again rarely saves meaningful space and
+can add an initial sequential decompression and seek-cache build. The runtime
+reads the nested ZIP through the mounted archive and does not reconstruct it on
+disk.
+
 ## Validation and output behavior
 
 Before writing output, the builder validates:

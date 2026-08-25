@@ -210,5 +210,8 @@ internal sealed class CommandLine
         Console.WriteLine();
         Console.WriteLine("Large ZIP64 archives are validated, hashed, appended, and verified as streams.");
         Console.WriteLine("The final executable must remain smaller than 4 GiB due to a Windows loader limit.");
+        Console.WriteLine("Nested ZIP virtual CDs larger than 2 GiB are supported by the x64 runtime.");
+        Console.WriteLine("Mount them from DOSBOX.BAT with IMGMOUNT D C:\\CD.ZIP -t zip (lowercase zip).");
+        Console.WriteLine("Store an already-compressed nested ZIP without further compression when practical.");
     }
 }

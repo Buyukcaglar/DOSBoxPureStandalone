@@ -394,6 +394,20 @@ $C:\GAME\DISK.IMG
 
 Consequently, changing the outer ZIP from `rawFile` to a memory-backed `DOS_File` should preserve internal ISO, CUE/BIN, IMG, IMA and VHD access without extraction.
 
+`IMGMOUNT D C:\CD.ZIP -t zip` uses the same mounted-path mechanism for a
+nested ZIP virtual data CD. The resulting `zipDrive` is registered with MSCDEX;
+the ZIP directory tree is exposed as CD files without constructing a sector
+image or extracting the nested archive. This is a virtual data-CD path rather
+than a sector-accurate replacement for mixed-mode audio or copy-protected media.
+
+Nested ZIP containers can exceed 2 GiB. `DOS_File::Seek64()` is preserved
+through `localFile`, `Zip_Handle`, the writable `Union_WriteHandle`, and
+`Mirror_Handle`. `Zip_Handle` keeps its internal position as a 64-bit value so
+the nested ZIP parser can read its end record, central directory, and local file
+headers across the signed 2 GiB boundary. DOS-visible member sizes and
+decompression offsets remain 32-bit, so a single nested member must not exceed
+`0xFFFFFFFF` bytes.
+
 ## 6.5 Integration boundary
 
 The implemented Phase 2 seam is `zipDrive::MountWithDependencies()`, immediately before it would construct `rawFile` for the outer archive. Its optional `DOS_File*` parameter is used only for the initial ZIP/DOSZ. When no source is supplied, the existing `$`-path and `fopen_wrap()` behavior is unchanged.
@@ -1252,6 +1266,36 @@ and produced a 3,966,826,115-byte package. DOSBox Pure mounted all six internal
 ISOs and reached the Ripper main menu. A second Process Monitor trace confirmed
 the runtime read the package executable directly and created no physical ISO,
 ZIP, BIN, CUE, Temp, or execution-directory game-content file.
+
+Large nested-ZIP CD validation then used `Ripper_Consolidated.zip`, a
+3,106,790,056-byte outer package containing a 3,090,933,320-byte `CD.ZIP` and a
+root `START.BAT` that ran `IMGMOUNT D ".\CD.ZIP" -t zip` before `RIPPER.EXE`.
+The nested ZIP contained 2,349 entries; 268 local headers began beyond 2 GiB,
+and its central directory began at byte 3,090,702,257. The generated executable
+mounted D, the runtime reported `Program: RIPPER`, and interactive validation
+confirmed that Ripper passed its CD-ROM check and entered the game.
+
+A deterministic boundary package placed `PROBE.TXT` after a 2,214,592,512-byte
+stored member in a nested ZIP. Its batch mounted D, read the late entry, wrote
+`LARGEZIP.OK=PASS` through the normal overlay, and exited with code 0. The
+original PE-resource/internal-disk-image smoke package also retained both of its
+expected markers after the change.
+
+The ordinary external-file path was independently tested with a
+4,449,418,984-byte ZIP64 archive. Its central directory and the local header for
+`TAKE2.INI` both began beyond 4 GiB; a directory-mounted `DOSBOX.BAT` ran
+`IMGMOUNT D C:\BIG.ZIP -t zip`, read `D:\TAKE2.INI`, and wrote a `PASS` marker.
+This isolates and confirms the `localFile::Seek64()` path without relying on the
+embedded-package mapping or fitting the source ZIP inside a generated EXE.
+
+A fresh Process Monitor trace of the consolidated Ripper package contained no
+physical `CD.ZIP`, ISO, BIN, CUE, image, or Temp path. Target-process writes
+were limited to the configured `embedded.pure.zip`, the explicitly redirected
+diagnostic log, and normal filesystem/graphics-driver activity. The nested ZIP
+in this test was itself deflated by the outer ZIP for only an 11,396-byte saving;
+packages should store an already-compressed nested ZIP without further
+compression when practical to avoid the initial sequential inflation and seek-
+cache build.
 
 ## Phase 8
 

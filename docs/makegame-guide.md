@@ -292,6 +292,11 @@ PAUSE
 The DOSBox `IMGMOUNT` type value `zip` is case-sensitive in the bundled core;
 use lowercase `-t zip`. Store a nested ZIP without further compression in the
 outer ZIP when practical so random access does not repeatedly decompress it.
+The Windows x64 runtime supports nested ZIP containers larger than 2 GiB while
+individual files inside them remain limited to 4 GiB minus one byte. This was
+validated with Ripper using a 3.09 GB nested `CD.ZIP`; the game detected D as a
+CD-ROM drive and entered the game. The complete generated executable must still
+remain smaller than 4 GiB.
 
 ## Packages that need visible DOS text mode
 

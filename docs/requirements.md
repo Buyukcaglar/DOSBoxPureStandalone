@@ -310,6 +310,12 @@ The archive implementation must not impose an artificially low package size limi
 
 At minimum it should be suitable for typical DOS CD-ROM games.
 
+Nested ZIP containers used as virtual data CDs may exceed 2 GiB. Internal
+mounting must preserve 64-bit container positions through the mounted DOS drive
+and writable overlay. Individual DOS-visible ZIP members may remain limited to
+`0xFFFFFFFF` bytes, and the separate Windows requirement that a generated
+executable remain smaller than 4 GiB still applies.
+
 Status:
 
 ```text
@@ -364,6 +370,21 @@ Status:
 
 ```text
 DESIRED
+```
+
+---
+
+## REQ-DISK-005 — Nested ZIP virtual CD support
+
+A ZIP stored inside the embedded package must be mountable as a virtual data CD
+with lowercase `IMGMOUNT D C:\CD.ZIP -t zip`. The drive must be registered with
+MSCDEX, remain readable across container offsets beyond 2 GiB, and must not be
+reconstructed on disk.
+
+Status:
+
+```text
+MANDATORY
 ```
 
 ---
@@ -1373,6 +1394,10 @@ MANDATORY
 ## REQ-TEST-004 — CD-ROM test
 
 Test at least one DOS CD-ROM title whose image remains inside the embedded archive.
+
+The test set must include a nested ZIP virtual CD larger than 2 GiB, a known
+file whose local header lies beyond the 2 GiB boundary, and a game-level CD-ROM
+detection check rather than relying only on the `IMGMOUNT` status message.
 
 Status:
 
