@@ -1302,6 +1302,13 @@ cache build.
 Test ZIP/DOSZ, ISO, CUE/BIN, IMG/IMA and VHD content with multiple
 representative DOS games.
 
+The [Windows 98 VHD verification](windows98-vhd-verification.md) records a tested
+dynamic VHD booted directly from a deflated, PE-embedded DOSZ, followed by a guest
+file write, clean shutdown, and successful relaunch of a renamed EXE. Process
+Monitor evidence distinguishes direct embedded access from the permitted overlay:
+this route persists the entire modified VHD as a stored ZIP entry, not a sector
+delta. Installing Windows from ISO into an embedded blank VHD remains untested.
+
 ---
 
 # 18. Testing Strategy

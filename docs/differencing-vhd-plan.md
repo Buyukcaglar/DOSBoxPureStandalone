@@ -1,0 +1,87 @@
+# Differencing VHD development plan
+
+Development branch: `Dev-Diff-Virtual-Disk-Support` (the requested display name
+contained spaces, which Git refs cannot contain). Approved 2026-09-22.
+
+## Objective and invariant
+
+Keep a completed Windows 98 installation as an immutable fixed or dynamic VHD in
+the embedded ZIP/DOSZ. Present a standard type-4 differencing VHD child to the
+guest and persist that child inside `embedded.pure.zip`. Never extract either
+image or reconstruct the embedded archive as a host file. Preserve existing
+package persistence roots and ordinary DOSBox Pure behavior.
+
+The [runtime verification](windows98-vhd-verification.md) established that the
+current whole-file overlay works but stores 276,895,232 bytes for the VHD. A
+subsequent read-only logical-sector comparison found only 493 changed sectors
+(252,416 bytes), including five explicit zero overrides. A compacted standard
+child with 2 MiB blocks is estimated at 29.4 MB before ZIP compression and minor
+metadata; this estimate is not an implemented-runtime measurement.
+
+## Ordered implementation milestones
+
+1. **Disk-layer foundation:** correct original logical-sector reads and error
+   handling; validate a read-only VHD parent; implement standard child headers,
+   BAT, sector bitmaps and parent fallback. Start with one child over a fixed or
+   dynamic parent, 512-byte sectors and 2 MiB child blocks. Test independently.
+2. **Mount/overlay integration:** open parent content from the immutable underlay,
+   create child state through the existing memory-backed writable overlay, and
+   mount it before guest boot. Derive geometry from virtual size/metadata rather
+   than child physical size. Keep the full base VHD out of save ZIPs.
+3. **Identity/packaging:** declare disk identity and opt-in behavior in package
+   metadata; calculate the strong parent fingerprint at build time. Bind children
+   to package ID, canonical disk path, VHD UUID, virtual size and fingerprint.
+   Repacking unchanged bytes and renaming an EXE must retain saves. Parent
+   mismatches must fail clearly without replacing or silently ignoring saves.
+4. **Migration:** detect legacy full-VHD overlay entries. Build a child from
+   logical differences, prove parent-plus-child sector equivalence, then replace
+   the old representation transactionally. Keep a recoverable original until
+   verification succeeds; never silently reset a user's installation.
+5. **Persistence lifecycle:** checkpoint dirty open children and flush on guest
+   shutdown, emulator exit, reboot and unmount. Define failed-save recovery,
+   concurrent-writer exclusion and save-state/rewind generation consistency.
+   Any transaction staging contains writable save data only inside the allowed
+   persistence directory, never extracted base content.
+6. **Runtime acceptance/optimization:** exercise Windows 98 and the archive
+   regression matrix with Process Monitor; measure memory, save size and latency.
+   Assess smaller blocks, compression and compaction separately after correctness.
+
+## Findings that constrain the implementation
+
+- `bios_disk.cpp::differencingDisk` is the proprietary `FFDD` format written to
+  an external `*-CDRIVE.sav`; it is not a standard differencing VHD.
+- `imageDisk::Write_AbsoluteSector` compares a differencing write against a raw
+  file offset. Dynamic VHD parents require logical-sector translation instead.
+- `sparseVhd::Init` accepts only type 3. `SeeBlock` normalizes writable bitmaps;
+  this must never run on a type-4 child, whose clear bits mean parent fallback.
+- Writes of zeros over nonzero parent sectors must remain explicit overrides.
+  Missing child sectors and explicitly zero child sectors are distinct states.
+- `IMGMOUNT -fs none` uses physical file size to recognize hard disks; a valid
+  empty child is small. It must use validated VHD metadata for this path.
+- `Union_WriteHandle` clones an entire underlay file on first write, so the base
+  VHD must only be opened read-only; create a separate child in the writable layer.
+- The current ZIP writer stores entries uncompressed and updates saves in place.
+  Existing file-close save scheduling alone is insufficient for open child disks.
+- The parent must be a completed installation. Installing into a blank parent
+  necessarily places the installation itself in the child.
+
+## Acceptance criteria
+
+- Independent sector tests: fixed/dynamic parent fallback, nonzero and zero
+  overrides, return to original data, block boundaries and previously sparse
+  parent blocks. All short reads/writes and malformed metadata fail explicitly.
+- Validate bounds, checksums, parent mismatch, unsupported chains, truncated
+  children, allocation limits and write failures. No silent memory-only fallback.
+- Windows 98 file/registry changes survive shutdown, reboot, unmount and renamed
+  EXE relaunch. Migrated disk contents match the legacy saved disk sector for sector.
+- Archive regressions cover DOS boot, configuration writes, saves, internal disk
+  images, repeated launch and corrupt/missing package behavior.
+- Procmon captures prove no loose VHD/base archive writes and no content extraction
+  into Temp or executable/cache directories. Persistence uses documented roots.
+- Root and affected submodule commits must all be reachable on GitHub before
+  publishing a parent commit that references them. ZillaLib remains unchanged.
+
+## Status
+
+Implementation started. No new user-facing differencing feature is available
+until the relevant milestones and runtime acceptance are explicitly marked done.
