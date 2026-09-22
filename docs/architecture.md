@@ -1309,6 +1309,15 @@ Monitor evidence distinguishes direct embedded access from the permitted overlay
 this route persists the entire modified VHD as a stored ZIP entry, not a sector
 delta. Installing Windows from ISO into an embedded blank VHD remains untested.
 
+The [differencing VHD development plan](differencing-vhd-plan.md) adds an
+experimental disk-layer codec for a standard type-4 child over an immutable
+fixed/dynamic parent. Its exact random-access interfaces separate parent reads
+from child writes without host paths or extraction. Synthetic tests and Windows
+VHD metadata validation pass; the codec is not yet connected to runtime mounting
+or `.pure.zip` persistence. Existing packages still use the full-file overlay
+behavior described above. Parent fingerprint binding, save migration and durable
+archive checkpoints remain required before enabling this feature.
+
 ---
 
 # 18. Testing Strategy

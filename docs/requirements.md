@@ -389,6 +389,32 @@ MANDATORY
 
 ---
 
+## REQ-DISK-006 — Differencing VHD persistence
+
+Opt-in Windows installation packages must keep the installed base VHD immutable
+inside their embedded ZIP/DOSZ and store a standard type-4 child in the existing
+package-specific `.pure.zip`. Neither image may be extracted as a runtime host
+file. Unchanged sectors read from the parent; zero writes over nonzero parent
+data remain explicit child overrides.
+
+Bind saves to the package/disk identity, parent UUID, virtual size and strong
+parent fingerprint. A missing or mismatched parent must fail clearly without
+resetting saves. Existing full-VHD overlays require verified, recoverable
+migration. Guest flush/shutdown, reboot, unmount and relaunch must preserve
+changes, including when the executable is renamed. Validate corruption, I/O
+failure, concurrent access and save-state consistency before enabling support.
+
+Status:
+
+```text
+IN DEVELOPMENT — isolated disk-layer codec tested; runtime integration pending
+```
+
+Implementation stages and acceptance evidence are tracked in
+[the differencing VHD plan](differencing-vhd-plan.md).
+
+---
+
 # 7. Startup Requirements
 
 ## REQ-START-001 — One-click launch

@@ -83,5 +83,28 @@ metadata; this estimate is not an implemented-runtime measurement.
 
 ## Status
 
-Implementation started. No new user-facing differencing feature is available
-until the relevant milestones and runtime acceptance are explicitly marked done.
+The first experimental disk-layer increment is implemented in
+`dosbox-pure/src/ints/vhd_differencing.h`. It reads immutable fixed/dynamic
+parents and creates, validates, reads and writes standard type-4 children through
+exact random-access source interfaces. It has no host-path or extraction code.
+Parent fallback, explicit zero overrides and returning sectors to the parent
+are implemented. The decoder bounds metadata and allocation tables, rejects
+overlapping extents and unsupported chains, and stops child access on I/O errors.
+
+Validation on 2026-09-22: the synthetic sector suite and its AddressSanitizer run
+passed. Coverage includes fixed/dynamic parents, bitmap/block boundaries,
+create/write/reopen equivalence, a 5 GiB virtual disk, malformed metadata, parent
+mismatch and injected short reads/writes. Windows `OpenVirtualDisk` independently
+opened generated parent/child fixtures for both parent types, resolved their
+parents, and reported type 4 with the expected size, block size and timestamp.
+The Windows test only creates synthetic fixtures under ignored test output and
+never attaches a disk. Run `tools/Test-DifferencingVhd.ps1 -WindowsInterop` or
+`-AddressSanitizer`; detailed limits are in `dosbox-pure/tests/README.vhd.md`.
+
+This increment is not connected to `imageDisk`, `DOS_File` or the ZIP overlay.
+The existing FFDD comparison path is unchanged; the new reader correctly
+translates dynamic parent sectors independently. Strong parent fingerprint
+binding and transactional persistence are caller responsibilities still to be
+implemented. Existing Windows 98 installations and saves have not been modified.
+Mount integration and milestones 3-6 remain pending. No automatic differencing
+feature or new runtime no-extraction result is claimed yet.
