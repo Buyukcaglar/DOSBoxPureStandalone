@@ -1310,13 +1310,31 @@ this route persists the entire modified VHD as a stored ZIP entry, not a sector
 delta. Installing Windows from ISO into an embedded blank VHD remains untested.
 
 The [differencing VHD development plan](differencing-vhd-plan.md) adds an
-experimental disk-layer codec for a standard type-4 child over an immutable
-fixed/dynamic parent. Its exact random-access interfaces separate parent reads
-from child writes without host paths or extraction. Synthetic tests and Windows
-VHD metadata validation pass; the codec is not yet connected to runtime mounting
-or `.pure.zip` persistence. Existing packages still use the full-file overlay
-behavior described above. Parent fingerprint binding, save migration and durable
-archive checkpoints remain required before enabling this feature.
+experimental standard type-4 child over an immutable fixed/dynamic parent.
+An explicit `IMGMOUNT 2 C:\BASE.VHD -t hdd -fs none -diff C:\CHILD.VHD`
+command now connects `imageDisk` to the codec through `DOS_File` exact-read/write
+adapters. The union drive opens the parent directly from its ZIP underlay and
+creates or reopens the child directly in its memory overlay, bypassing full-file
+copy-on-write. Neither adapter opens a host path. Footer geometry controls the
+BIOS disk even when the sparse image is physically smaller than a floppy image.
+
+This initial interface requires distinct root-level 8.3 VHD names on the same
+persistent ZIP union drive. Parent and child names are protected from DOS writes,
+rename and deletion while mounted. Unmount releases the backing handles before
+deleting the containing drive. Sector changes schedule the existing ZIP save
+writer while the child remains open; an image I/O fault stops further save
+publication for the session to retain the preceding archive. Save-state loading,
+saving and rewind are refused while an experimental child is mounted.
+
+[Synthetic runtime validation](differencing-vhd-mount-validation.md) covers
+fixed/dynamic boot, zero overrides, persistence, renamed-EXE relaunch and rejected
+legacy/corrupt/mismatched images. Children are bounded below the memory overlay's
+2 GiB physical limit. Initial identity checks use VHD UUID, virtual size and the
+parent entry's DOS timestamp interpreted as UTC; metadata fingerprint binding
+is still required. Existing packages retain the full-file overlay behavior.
+No automatic conversion is performed. Migration, transaction-safe archive
+checkpoints, cross-process exclusion and real Windows 98 acceptance remain
+required before enabling this feature for ordinary packages.
 
 ---
 

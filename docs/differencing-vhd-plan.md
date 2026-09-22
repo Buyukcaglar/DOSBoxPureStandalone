@@ -101,10 +101,39 @@ The Windows test only creates synthetic fixtures under ignored test output and
 never attaches a disk. Run `tools/Test-DifferencingVhd.ps1 -WindowsInterop` or
 `-AddressSanitizer`; detailed limits are in `dosbox-pure/tests/README.vhd.md`.
 
-This increment is not connected to `imageDisk`, `DOS_File` or the ZIP overlay.
-The existing FFDD comparison path is unchanged; the new reader correctly
-translates dynamic parent sectors independently. Strong parent fingerprint
-binding and transactional persistence are caller responsibilities still to be
-implemented. Existing Windows 98 installations and saves have not been modified.
-Mount integration and milestones 3-6 remain pending. No automatic differencing
-feature or new runtime no-extraction result is claimed yet.
+Milestone 2 now connects `imageDisk`, `DOS_File` and the memory-backed ZIP overlay
+through an explicit experimental command:
+
+```text
+imgmount 2 C:\BASE.VHD -t hdd -fs none -diff C:\CHILD.VHD
+boot -l c
+```
+
+The parent opens directly from the immutable ZIP underlay; the child opens or
+is created directly in the memory overlay, bypassing ordinary full-file
+copy-on-write. Footer geometry is used rather than physical image size. The
+initial contract is two distinct root-level DOS 8.3 `.VHD` names on the same
+persistent union drive, with no `-size` argument or host-file fallback. Legacy
+full-parent saves are rejected without modifying their contents. Existing
+children, including empty/corrupt ones, are never silently reset.
+
+The adapter bounds writable child storage to 2,147,483,647 bytes, validates exact
+seeks and split DOS transfers, and protects mounted filenames from replacement.
+Numeric unmount releases the disk while retaining the archive and child entry;
+unmounting the containing drive releases the disk first. Sector updates schedule
+existing ZIP persistence while the child is open. A codec I/O fault disables
+subsequent overlay publication for that session. Save states and rewind are
+refused while a child is mounted until generation consistency is implemented.
+
+[Mount validation](differencing-vhd-mount-validation.md) records synthetic BIOS
+boot/write/shutdown/relaunch, explicit zero overrides, a renamed executable,
+unmount/reopen, failure preservation and ordinary DOS/internal-floppy regression
+results. Release x64 builds and 33,714 AddressSanitizer/native-format checks pass.
+The existing FFDD path and existing Windows 98 installations/saves are unchanged.
+
+Milestones 3-6 remain pending. Next: package metadata opt-in and strong parent
+fingerprints. The current UUID/size/archive-timestamp checks are provisional;
+repacking an unchanged parent with a different ZIP timestamp can reject its child.
+There is no automatic migration, cross-process lock or crash-safe ZIP transaction.
+These limits and actual Windows 98 runtime acceptance must be resolved before
+the experimental path becomes ordinary package behavior.

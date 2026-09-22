@@ -407,7 +407,8 @@ failure, concurrent access and save-state consistency before enabling support.
 Status:
 
 ```text
-IN DEVELOPMENT — isolated disk-layer codec tested; runtime integration pending
+IN DEVELOPMENT — experimental mount/overlay integration tested with synthetic guests;
+metadata identity, migration, durable checkpoints and Windows 98 acceptance pending
 ```
 
 Implementation stages and acceptance evidence are tracked in
