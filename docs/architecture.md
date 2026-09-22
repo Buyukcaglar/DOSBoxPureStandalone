@@ -1329,9 +1329,27 @@ saving and rewind are refused while an experimental child is mounted.
 [Synthetic runtime validation](differencing-vhd-mount-validation.md) covers
 fixed/dynamic boot, zero overrides, persistence, renamed-EXE relaunch and rejected
 legacy/corrupt/mismatched images. Children are bounded below the memory overlay's
-2 GiB physical limit. Initial identity checks use VHD UUID, virtual size and the
-parent entry's DOS timestamp interpreted as UTC; metadata fingerprint binding
-is still required. Existing packages retain the full-file overlay behavior.
+2 GiB physical limit. Version-2 package metadata now binds a declared disk to
+its SHA-256, UUID and virtual size. The packager hashes the uncompressed VHD
+entry while streaming it, and the runtime verifies those bytes through its
+immutable DOS archive handle with a 64 KiB hashing buffer. A 512-byte `CHILD.DBI`
+entry beside the child in the save ZIP binds that identity to package ID, disk
+ID, canonical parent/child names and child UUID. The mounted binding name is
+protected by the same lease as the disk files. No host sidecar is created.
+
+Reopening a bound child retains the parent timestamp from its original binding,
+after verifying the current parent fingerprint. This permits repacking identical
+parent bytes with a different ZIP timestamp; the codec still checks the child's
+timestamp against the retained value. Unbound experimental children are rejected
+by declared packages and require explicit migration. A package without a disk
+declaration cannot open a bound child. See the [identity validation record](differencing-vhd-identity-validation.md).
+
+Opt-in manifests supply `disk_id`, `parent` and `child`; the packager computes
+the identity fields. The manifest remains format 1 but emitted metadata uses
+format 2. Runtime capability resource 104 contains `DBPVHD_IDENTITY_1` plus a NUL
+byte; the packager requires it for this feature. Ordinary packages continue
+emitting metadata version 1. Startup still uses explicit `IMGMOUNT -diff` in
+the package's batch file, and existing packages retain the full-file overlay behavior.
 No automatic conversion is performed. Migration, transaction-safe archive
 checkpoints, cross-process exclusion and real Windows 98 acceptance remain
 required before enabling this feature for ordinary packages.

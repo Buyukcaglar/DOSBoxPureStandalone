@@ -36,15 +36,16 @@ internal static partial class PackageBuilder
     public static PackageBuildResult Build(PackageSpecification package, bool overwrite, bool validateOnly)
     {
         ValidateSpecification(package, overwrite, validateOnly);
-        var templateContainsArchive = ValidateTemplate(package.TemplatePath);
+        var templateContainsArchive = ValidateTemplate(package.TemplatePath, package.DifferencingVhd is not null);
         var defaultConfig = DefaultConfig.Load(package.DefaultConfigPath, package.Fullscreen, package.LockMouse, package.AspectRatio, package.Cycles, package.CpuType, package.EnableScanlines, package.EnableCrtFilter);
         var startup = NormalizeAndValidateStartup(package.Startup ?? defaultConfig.PackageStartup ?? "DOSBOX.BAT");
         using var archive = GameArchive.OpenValidated(package.ArchivePath, startup);
+        var diskIdentity = package.DifferencingVhd is null ? null : archive.InspectDifferencingVhd(package.DifferencingVhd);
         var archiveStorage = archive.Length > MaxMappedResourceArchiveSize
             ? ArchiveStorageMode.Appended
             : ArchiveStorageMode.Resource;
         var icon = package.IconPath is null ? null : IconResourceBuilder.FromPng(package.IconPath);
-        var metadataBytes = CreateMetadata(package, startup, archive.Identity, archiveStorage, defaultConfig.Data is not null);
+        var metadataBytes = CreateMetadata(package, startup, archive.Identity, archiveStorage, defaultConfig.Data is not null, diskIdentity);
         var versionBytes = VersionResourceBuilder.Build(package);
 
         var outputDirectory = validateOnly ? Path.GetTempPath() : Path.GetDirectoryName(package.OutputPath)!;
@@ -137,11 +138,14 @@ internal static partial class PackageBuilder
         VersionResourceBuilder.Validate(package.VersionInfo);
     }
 
-    private static bool ValidateTemplate(string templatePath)
+    private static bool ValidateTemplate(string templatePath, bool needsDifferencingVhd)
     {
         try
         {
             using var module = ResourceModule.Load(templatePath);
+            if (needsDifferencingVhd && (!module.HasNumeric(NativeResources.RtRcData, DifferencingVhd.CapabilityResourceId) ||
+                !module.ReadNumeric(NativeResources.RtRcData, DifferencingVhd.CapabilityResourceId).SequenceEqual(DifferencingVhd.Capability)))
+                throw new PackageBuilderException("Runtime template does not support differencing VHD identity version 1; rebuild the development runtime.");
             var hasArchive = module.HasNumeric(NativeResources.RtRcData, ArchiveResourceId);
             var hasMetadata = module.HasNumeric(NativeResources.RtRcData, MetadataResourceId);
             if (hasArchive != hasMetadata)
@@ -182,13 +186,13 @@ internal static partial class PackageBuilder
         return startup;
     }
 
-    private static byte[] CreateMetadata(PackageSpecification package, string startup, string archiveIdentity, ArchiveStorageMode archiveStorage, bool hasDefaultConfig)
+    private static byte[] CreateMetadata(PackageSpecification package, string startup, string archiveIdentity, ArchiveStorageMode archiveStorage, bool hasDefaultConfig, DifferencingVhdIdentity? disk)
     {
         using var stream = new MemoryStream();
         using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping }))
         {
             writer.WriteStartObject();
-            writer.WriteNumber("format_version", package.FormatVersion);
+            writer.WriteNumber("format_version", disk is null ? package.FormatVersion : 2);
             writer.WriteString("package_id", package.PackageId);
             writer.WriteString("title", package.Title);
             writer.WriteString("startup", startup);
@@ -197,6 +201,18 @@ internal static partial class PackageBuilder
             else
                 writer.WriteString("archive_storage", AppendedArchivePayload.StorageName);
             writer.WriteString("archive_identity", archiveIdentity);
+            if (disk is not null)
+            {
+                writer.WriteStartObject("differencing_vhd");
+                writer.WriteString("disk_id", disk.DiskId);
+                writer.WriteString("parent", disk.Parent);
+                writer.WriteString("child", disk.Child);
+                writer.WriteString("parent_sha256", disk.ParentSha256);
+                writer.WriteString("parent_uuid", disk.ParentUuid);
+                // Decimal text avoids floating-point narrowing in the runtime JSON reader.
+                writer.WriteString("parent_virtual_size", disk.ParentVirtualSize.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                writer.WriteEndObject();
+            }
             if (hasDefaultConfig) writer.WriteNumber("default_config_resource", DefaultConfigResourceId);
             if (package.TextMode) writer.WriteBoolean("text_mode", true);
             if (!string.IsNullOrWhiteSpace(package.VersionInfo.CompanyName)) writer.WriteString("publisher", package.VersionInfo.CompanyName);

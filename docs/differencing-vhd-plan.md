@@ -131,9 +131,41 @@ unmount/reopen, failure preservation and ordinary DOS/internal-floppy regression
 results. Release x64 builds and 33,714 AddressSanitizer/native-format checks pass.
 The existing FFDD path and existing Windows 98 installations/saves are unchanged.
 
-Milestones 3-6 remain pending. Next: package metadata opt-in and strong parent
-fingerprints. The current UUID/size/archive-timestamp checks are provisional;
-repacking an unchanged parent with a different ZIP timestamp can reject its child.
-There is no automatic migration, cross-process lock or crash-safe ZIP transaction.
-These limits and actual Windows 98 runtime acceptance must be resolved before
-the experimental path becomes ordinary package behavior.
+Milestone 3 implements package metadata opt-in and strong parent fingerprints,
+as described below and in the [identity validation record](differencing-vhd-identity-validation.md).
+Milestones 4-6 remain pending. Next: verified, recoverable migration of legacy
+full-parent saves and unbound experimental children. There is no automatic
+migration, cross-process lock or crash-safe ZIP transaction. These limits and
+actual Windows 98 runtime acceptance must be resolved before the experimental
+path becomes ordinary package behavior. Process Monitor acceptance remains open:
+the host reports a conflicting loaded driver version and requires a reboot.
+
+## Identity increment implementation
+
+Milestone 3 adds one optional `differencing_vhd` manifest object (`disk_id`,
+`parent`, `child`). The packager streams the selected ZIP entry through SHA-256,
+validates its VHD footer, and emits its raw UUID, virtual size and digest in
+version-2 embedded metadata. A runtime capability resource prevents packaging
+this declaration with an older template; older runtimes also reject version 2.
+Ordinary packages retain version 1. Startup still uses explicit `IMGMOUNT -diff`.
+
+Before mounting a declared disk, the runtime hashes the immutable parent through
+its DOS archive handle without extraction or a second whole-image allocation.
+The child is accompanied by a fixed-size `CHILD.DBI` binding entry in `.pure.zip`.
+It binds package ID, disk ID, canonical parent/child paths, SHA-256, parent UUID,
+virtual size and child UUID. Missing, corrupt, orphaned or mismatched bindings
+fail without replacing existing saves. Earlier unbound experimental children
+require explicit migration; they are not adopted automatically.
+
+The binding retains the parent timestamp used when the child was created. After
+strong identity verification, reopening uses that timestamp instead of the new
+ZIP entry timestamp. Thus repacking identical VHD bytes preserves saves without
+weakening the codec's timestamp check. Parent bytes, paths and disk/package IDs
+must still match. The binding entry shares the child's in-memory lifetime and
+write protection. Its publication uses the existing save ZIP; atomic generation
+publication and concurrency remain milestone 5 work.
+
+Validation: Release runtime/packager builds, 34,251 sanitizer/native-format
+checks, the 21-case generated-package identity matrix, and ordinary DOS/internal
+floppy relaunch passed. Existing disk bytes were preserved on rejection. No
+actual Windows 98 image or user save was used in this milestone.

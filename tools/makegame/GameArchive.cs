@@ -19,6 +19,9 @@ internal sealed class GameArchive : IDisposable
     public long Length { get; }
     public string Identity { get; }
 
+    public DifferencingVhdIdentity InspectDifferencingVhd(DifferencingVhdSpecification specification)
+        => DifferencingVhd.Inspect(RequireStream(), specification);
+
     public static GameArchive OpenValidated(string path, string startup)
     {
         FileStream? stream = null;

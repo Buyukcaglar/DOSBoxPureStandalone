@@ -70,6 +70,46 @@ Paths in a manifest are resolved relative to the manifest file. Command-line
 paths are resolved relative to the current directory and override manifest
 paths.
 
+### Experimental differencing VHD packages
+
+On `Dev-Diff-Virtual-Disk-Support`, a manifest may add:
+
+```json
+"differencing_vhd": {
+  "disk_id": "windows98",
+  "parent": "BASE.VHD",
+  "child": "CHILD.VHD"
+}
+```
+
+`disk_id` is a stable 1-64 character token using ASCII letters, digits, `_` or
+`-`. Parent and child must be distinct root-level 8.3 `.VHD` names; the builder
+canonicalizes them to uppercase. Only the installed fixed/dynamic parent belongs
+in the source archive. Reserve the child name and its matching `.DBI` name for
+persistence. Startup must explicitly mount it, for example:
+
+```bat
+imgmount 2 C:\BASE.VHD -t hdd -fs none -diff C:\CHILD.VHD
+boot -l c
+```
+
+The builder streams the uncompressed parent through SHA-256, records its UUID
+and virtual size, and emits version-2 embedded metadata. The input manifest
+still uses version 1. A compatible development runtime with capability resource
+104 is required; older templates are rejected. Ordinary packages stay version 1.
+
+The runtime verifies the parent and stores a 512-byte binding entry beside the
+child inside `.pure.zip`. Renaming the executable or repacking identical parent
+bytes (including changing ZIP timestamps/compression) retains saves. Changing
+package/disk IDs, parent/child paths or parent bytes requires migration. Existing
+full-parent overlays and unbound experimental children are rejected without
+automatic conversion. Back up controlled test saves before changing manifests.
+
+This remains experimental: migration, transactional saving, concurrent process
+exclusion and real Windows 98 acceptance are separate milestones. The runtime
+hashes the full selected parent on each mount, without extracting it; performance
+on large installations still needs measurement.
+
 The runtime template is the `DOSBoxPureStandAlone.exe` produced by the
 `dosbox-pure-unleashed` Release build. The archive must be a valid ZIP/DOSZ.
 Automatic startup can come from a root-level `DOSBOX.BAT`, manifest `startup`,

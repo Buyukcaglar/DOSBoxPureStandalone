@@ -90,6 +90,12 @@ requested. Do not infer the runtime no-extraction result from code or archive
 inspection alone. Keep this gate open until a nonempty capture covers process
 startup, child writes and host exit and its file operations have been inspected.
 
+Follow-up during milestone 3 identified the host blocker: Process Monitor
+reported that another version of its driver was already loaded and required a
+reboot. The user supplied the exact dialog text. No reboot or driver changes
+were made. Repeat capture after a user-managed reboot; existing empty traces
+remain excluded from validation evidence.
+
 This increment schedules saves while the child remains open, but continuous-write
 checkpoint deadlines, crash/power-loss recovery, injected host-save failures,
 concurrent processes, save-state behavior and guest reboot still require the

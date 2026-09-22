@@ -407,8 +407,8 @@ failure, concurrent access and save-state consistency before enabling support.
 Status:
 
 ```text
-IN DEVELOPMENT — experimental mount/overlay integration tested with synthetic guests;
-metadata identity, migration, durable checkpoints and Windows 98 acceptance pending
+IN DEVELOPMENT — mount/overlay and package fingerprint binding tested with synthetic guests;
+migration, durable checkpoints and Windows 98 acceptance pending
 ```
 
 Implementation stages and acceptance evidence are tracked in
@@ -879,7 +879,11 @@ Status:
 MANDATORY
 ```
 
-Phase 6 accepts only numeric `format_version` `1`.
+Ordinary packages use numeric `format_version` `1`. Experimental differencing
+VHD packages use version `2`, which requires a valid `differencing_vhd` identity
+declaration. A version-1 package must not declare that field. The packager must
+refuse templates without the matching VHD identity capability. Older runtimes
+reject version 2 explicitly rather than silently ignoring the disk identity.
 
 ---
 

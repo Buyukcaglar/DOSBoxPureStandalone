@@ -16,6 +16,7 @@ internal sealed class PackageManifest
     [JsonPropertyName("icon")] public string? Icon { get; set; }
     [JsonPropertyName("default_config")] public string? DefaultConfig { get; set; }
     [JsonPropertyName("text_mode")] public bool TextMode { get; set; }
+    [JsonPropertyName("differencing_vhd")] public DifferencingVhdSpecification? DifferencingVhd { get; set; }
     [JsonPropertyName("version_info")] public PackageVersionInfo? VersionInfo { get; set; }
 }
 
@@ -47,6 +48,7 @@ internal sealed class PackageSpecification
     public string? Cycles { get; init; }
     public string? CpuType { get; init; }
     public bool TextMode { get; init; }
+    public DifferencingVhdSpecification? DifferencingVhd { get; init; }
     public bool EnableScanlines { get; init; }
     public bool EnableCrtFilter { get; init; }
     public PackageVersionInfo VersionInfo { get; init; } = new();
@@ -115,6 +117,7 @@ internal sealed class PackageSpecification
             Cycles = commandLine.Cycles ?? commandLine.EmulatedPerformanceCycles,
             CpuType = commandLine.CpuType,
             TextMode = commandLine.EnableTextMode || manifest.TextMode,
+            DifferencingVhd = manifest.DifferencingVhd,
             EnableScanlines = commandLine.EnableScanlines,
             EnableCrtFilter = commandLine.EnableCrtFilter,
             VersionInfo = manifest.VersionInfo ?? new PackageVersionInfo(),
