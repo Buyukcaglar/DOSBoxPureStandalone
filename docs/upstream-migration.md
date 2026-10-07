@@ -3,6 +3,12 @@
 The latest synchronization is the [6 October 2026 Codeberg migration](#6-october-2026-codeberg-migration).
 The sections immediately below retain the 1 October verification record.
 
+These are historical synchronization records. The later
+[milestone 5 validation](differencing-vhd-persistence-validation.md) supersedes
+the earlier pending checkpoint, publication, concurrency and state-consistency
+limits. Legacy migration is discarded; real Windows 98 acceptance remains
+milestone 6.
+
 The 1 October 2026 migration merges the latest upstream `main` revisions into
 the standalone forks on local branch `codex/upstream-sync-20261001`. The
 memory-backed embedded archive, deterministic persistence, package identity,

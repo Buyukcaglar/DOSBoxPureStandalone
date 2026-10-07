@@ -1,7 +1,3 @@
-# README.md
-
-> **AI assistance disclaimer:** This project has been developed with assistance from OpenAI ChatGPT and Codex. AI was used for upstream code analysis, implementation, documentation, build automation and test support. Although the generated changes are reviewed and tested, AI-assisted work may still contain errors or compatibility issues. Users should independently validate the software for their intended use and report reproducible problems through the project's GitHub Issues page.
-
 # DOSBox Pure Standalone
 
 A downstream DOSBox Pure project for packaging a complete DOS game, DOSBox runtime, configuration and optional disk images into a **single standalone Windows executable**.
@@ -16,11 +12,17 @@ should be all that is required to distribute and launch the game.
 
 The embedded game package is accessed directly from memory and is **never extracted to disk**.
 
+![DOS games in Windows File Explorer](docs/images/DOS-Games.png)
+
 ---
+
+> **AI assistance disclaimer:** This project has been developed with assistance from OpenAI ChatGPT and Codex. AI was used for upstream code analysis, implementation, documentation, build automation and test support. Although the generated changes are reviewed and tested, AI-assisted work may still contain errors or compatibility issues. Users should independently validate the software for their intended use and report reproducible problems through the project's GitHub Issues page.
 
 # Project Status
 
 Phase 0 baseline validation, Phase 1 content-loading analysis, Phase 2 memory-backed loading, Phase 3 PE-resource loading, Phase 4 persistent overlays, Phase 5 automatic startup, Phase 6 package metadata and Phase 7 package generation are complete as of 2026-08-20.
+
+Differencing VHD milestone 5's synthetic Windows scope is qualified: bounded checkpoints, lifecycle flushes, recoverable save publication, writer exclusion and matching disk/save-state/rewind generations are covered by the [validation and Process Monitor evidence](docs/differencing-vhd-persistence-validation.md). Milestone 6 real Windows 98 acceptance and optimization remain pending; unsupported legacy saves are rejected without migration.
 
 Phase 3 embeds a license-safe smoke DOSZ as Windows `RCDATA`. When the executable starts without an explicit content path, Unleashed locates the resource with the Windows resource APIs and passes its memory-mapped pointer directly into the Phase 2 `memoryFile` path.
 
