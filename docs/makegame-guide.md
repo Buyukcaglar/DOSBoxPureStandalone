@@ -9,6 +9,12 @@ directory.
 The distributed Windows x64 `makegame.exe` is a self-contained .NET 8
 application. A separate .NET installation is not required.
 
+The Windows x64 release also supports opt-in experimental parent/child VHD
+packages. Synthetic persistence and state validation is complete; real Windows
+98 acceptance remains milestone 6. See the installed
+`DIFFERENCING-VHD-GUIDE.md` (repository: `docs/differencing-vhd-guide.md`) for the
+complete creation workflow, ready-to-use examples and current limitations.
+
 ## Distribution contents
 
 Keep these two programs together after extracting the release ZIP:
@@ -590,6 +596,7 @@ Unknown manifest fields are rejected to catch spelling mistakes.
 | `icon` | no | PNG icon path. |
 | `default_config` | no | Flat defaults JSON path. |
 | `text_mode` | no | Boolean equivalent of `--text-mode`; defaults to `false`. |
+| `differencing_vhd` | no | Experimental object with `disk_id`, `parent` and `child`; requires a compatible runtime and explicit `IMGMOUNT -diff` startup. |
 | `version_info` | no | Windows application version strings. |
 
 Performance and presentation switches are command-line features. To make

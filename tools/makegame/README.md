@@ -72,7 +72,12 @@ paths.
 
 ### Experimental differencing VHD packages
 
-On `Dev-Diff-Virtual-Disk-Support`, a manifest may add:
+See the [usage guide](../../docs/differencing-vhd-guide.md) for a complete
+Windows 98 example, child creation, independent save sets and current limits.
+Ready-to-use batch, manifest and defaults files are in
+`examples/win98-differencing/`.
+
+A compatible runtime supports this opt-in manifest declaration:
 
 ```json
 "differencing_vhd": {

@@ -1321,10 +1321,10 @@ BIOS disk even when the sparse image is physically smaller than a floppy image.
 This initial interface requires distinct root-level 8.3 VHD names on the same
 persistent ZIP union drive. Parent and child names are protected from DOS writes,
 rename and deletion while mounted. Unmount releases the backing handles before
-deleting the containing drive. Sector changes schedule the existing ZIP save
-writer while the child remains open; an image I/O fault stops further save
-publication for the session to retain the preceding archive. Save-state loading,
-saving and rewind are refused while an experimental child is mounted.
+deleting the containing drive. Sector changes mark the writable union dirty
+while the child remains open; an image I/O fault stops further save publication
+for the session to retain the preceding archive. Milestone 5 replaces the
+earlier mounted-child state refusal with bounded version-9 disk snapshots.
 
 [Synthetic runtime validation](differencing-vhd-mount-validation.md) covers
 fixed/dynamic boot, zero overrides, persistence, renamed-EXE relaunch and rejected
@@ -1341,7 +1341,7 @@ Reopening a bound child retains the parent timestamp from its original binding,
 after verifying the current parent fingerprint. This permits repacking identical
 parent bytes with a different ZIP timestamp; the codec still checks the child's
 timestamp against the retained value. Unbound experimental children are rejected
-by declared packages and require explicit migration. A package without a disk
+by declared packages and remain unsupported. A package without a disk
 declaration cannot open a bound child. See the [identity validation record](differencing-vhd-identity-validation.md).
 
 Opt-in manifests supply `disk_id`, `parent` and `child`; the packager computes
@@ -1350,9 +1350,61 @@ format 2. Runtime capability resource 104 contains `DBPVHD_IDENTITY_1` plus a NU
 byte; the packager requires it for this feature. Ordinary packages continue
 emitting metadata version 1. Startup still uses explicit `IMGMOUNT -diff` in
 the package's batch file, and existing packages retain the full-file overlay behavior.
-No automatic conversion is performed. Migration, transaction-safe archive
-checkpoints, cross-process exclusion and real Windows 98 acceptance remain
-required before enabling this feature for ordinary packages.
+No automatic conversion is performed. Legacy full-parent and unbound-child
+migration was discarded by the user on 7 October 2026 because no current built
+package requires it. The original [milestone 5 handoff](handoffs/milestone5-persistence-20261007.md)
+records the bounded implementation authority. Real Windows 98 acceptance remains
+milestone 6.
+
+### Milestone 5 persistence and state generations
+
+The union acquires an exclusive native lock on the selected save's `.lock`
+sibling before loading or recovering writable data and holds it through
+destruction. Continued writes do not postpone the first-dirty deadline. Leased
+children have a host-time deadline of at most five seconds, polled at the next
+safe stopped frame, including paused frames; PIC scheduling also remains.
+Complete-ZIP publication time depends on data size and storage, and host failures
+retain dirty state for retry rather than promising a successful five-second save.
+Lifecycle flushes use the same publisher. See the [persistence design](milestone5-persistence-design.md)
+for the traced call paths, recovery selection and fault contract.
+
+Publication writes a complete save ZIP to `.pending` inside persistence, checks
+writes, stdio and native flushes, and close, then preserves the prior committed
+ZIP as `.previous` through a separately flushed staging file. Replacement and a
+final native flush precede clearing dirty state. Child and binding therefore
+share one published ZIP generation. Recovery checks complete ZIP structure,
+entry CRCs, bounded `FILEMODS.DBP`, disk binding, child codec and immutable parent
+identity before promoting a fallback. Invalid-only recovery preserves the bytes
+and reports a persistence error. No save transaction reconstructs a game
+archive or opens a loose parent/child host file.
+
+Version-9 states contain the mounted child vectors and their exact binding,
+slot, names and content generation alongside machine state. Before restoration,
+the decoder validates configuration, envelope bounds/checksum, a bounded machine
+section directory and disk identity/format. It swaps the vectors in their
+existing memory files, reopens codec caches, restores machine/PIC state and
+rebases the restored disk timeline for publication. A private current-state
+backup rolls back reported deeper decoder errors before execution resumes;
+rollback failure fences disk publication and requires restart. Aggregate child snapshots
+are capped at 512 MiB; the normal disk storage cap remains unchanged. Ordinary
+packages keep version-8 states. See the [state contract](milestone5-state-design.md)
+for buffer-growth behavior, memory cost and decoder limits.
+
+Persistence refusal before the DOS shell exists returns a failed content load,
+releases the initialized core and lock, and requests frontend shutdown. The
+frontend checks that result before querying video state or starting frames.
+
+The [milestone 5 validation record](differencing-vhd-persistence-validation.md)
+records completed synthetic checks and their exact limits. Two reviewed
+current-source Process Monitor captures cover all 139 required synthetic,
+ordinary-archive and identity launches, with 12,260,786 attributed events.
+Milestone 5 is qualified for that synthetic Windows scope. Real Windows 98
+acceptance remains milestone 6.
+
+Native flush requests and process termination tests do not establish hardware
+power-loss guarantees. The current configuration leaves hard-disk ATA emulation
+disabled; the enabled guest lifecycle path is BIOS disk reset/flush, and real
+Windows shutdown command coverage remains milestone 6.
 
 ---
 

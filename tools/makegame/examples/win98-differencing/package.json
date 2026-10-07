@@ -1,0 +1,14 @@
+{
+  "format_version": 1,
+  "package_id": "org.onur.win98.diff.test1",
+  "title": "Windows 98 - differencing VHD",
+  "template": "C:\\Program Files\\DosBoxPureStandalone\\DOSBoxPureStandAlone.exe",
+  "archive": "win98.dosz",
+  "output": "Win98.exe",
+  "default_config": "defaults.json",
+  "differencing_vhd": {
+    "disk_id": "windows98",
+    "parent": "BASE.VHD",
+    "child": "CHILD.VHD"
+  }
+}

@@ -33,10 +33,10 @@ metadata; this estimate is not an implemented-runtime measurement.
    to package ID, canonical disk path, VHD UUID, virtual size and fingerprint.
    Repacking unchanged bytes and renaming an EXE must retain saves. Parent
    mismatches must fail clearly without replacing or silently ignoring saves.
-4. **Migration:** detect legacy full-VHD overlay entries. Build a child from
-   logical differences, prove parent-plus-child sector equivalence, then replace
-   the old representation transactionally. Keep a recoverable original until
-   verification succeeds; never silently reset a user's installation.
+4. **Discarded on 7 October 2026:** legacy full-VHD overlay and unbound-child
+   migration. The user confirmed that no current built package requires this
+   functionality. It is outside the current implementation backlog. Preserve
+   existing saves and reject unsupported representations without changing them.
 5. **Persistence lifecycle:** checkpoint dirty open children and flush on guest
    shutdown, emulator exit, reboot and unmount. Define failed-save recovery,
    concurrent-writer exclusion and save-state/rewind generation consistency.
@@ -60,8 +60,9 @@ metadata; this estimate is not an implemented-runtime measurement.
   empty child is small. It must use validated VHD metadata for this path.
 - `Union_WriteHandle` clones an entire underlay file on first write, so the base
   VHD must only be opened read-only; create a separate child in the writable layer.
-- The current ZIP writer stores entries uncompressed and updates saves in place.
-  Existing file-close save scheduling alone is insufficient for open child disks.
+- The initial ZIP writer stored entries uncompressed and updated saves in place.
+  Milestone 5 publishes complete generations through checked staging/replacement.
+  File-close scheduling alone is insufficient for open child disks.
 - The parent must be a completed installation. Installing into a blank parent
   necessarily places the installation itself in the child.
 
@@ -73,7 +74,7 @@ metadata; this estimate is not an implemented-runtime measurement.
 - Validate bounds, checksums, parent mismatch, unsupported chains, truncated
   children, allocation limits and write failures. No silent memory-only fallback.
 - Windows 98 file/registry changes survive shutdown, reboot, unmount and renamed
-  EXE relaunch. Migrated disk contents match the legacy saved disk sector for sector.
+  EXE relaunch. Unsupported legacy saves are rejected without modifying them.
 - Archive regressions cover DOS boot, configuration writes, saves, internal disk
   images, repeated launch and corrupt/missing package behavior.
 - Procmon captures prove no loose VHD/base archive writes and no content extraction
@@ -122,8 +123,8 @@ seeks and split DOS transfers, and protects mounted filenames from replacement.
 Numeric unmount releases the disk while retaining the archive and child entry;
 unmounting the containing drive releases the disk first. Sector updates schedule
 existing ZIP persistence while the child is open. A codec I/O fault disables
-subsequent overlay publication for that session. Save states and rewind are
-refused while a child is mounted until generation consistency is implemented.
+subsequent overlay publication for that session. The initial mounted-child state
+refusal is superseded by milestone 5's bounded version-9 disk/machine snapshots.
 
 [Mount validation](differencing-vhd-mount-validation.md) records synthetic BIOS
 boot/write/shutdown/relaunch, explicit zero overrides, a renamed executable,
@@ -133,12 +134,26 @@ The existing FFDD path and existing Windows 98 installations/saves are unchanged
 
 Milestone 3 implements package metadata opt-in and strong parent fingerprints,
 as described below and in the [identity validation record](differencing-vhd-identity-validation.md).
-Milestones 4-6 remain pending. Next: verified, recoverable migration of legacy
-full-parent saves and unbound experimental children. There is no automatic
-migration, cross-process lock or crash-safe ZIP transaction. These limits and
-actual Windows 98 runtime acceptance must be resolved before the experimental
-path becomes ordinary package behavior. Process Monitor acceptance remains open:
-the host reports a conflicting loaded driver version and requires a reboot.
+Milestone 4 was discarded by the user on 7 October 2026 because no current built
+package requires migration. Milestone 5 implements bounded first-dirty
+checkpoints, lifecycle flushes, complete recoverable ZIP publication, writer
+exclusion and disk/save-state/rewind generation consistency. The
+[milestone 5 evidence record](differencing-vhd-persistence-validation.md)
+records synthetic fault, process-crash, concurrency, lifecycle and state checks,
+exact tested builds and limitations. Two reviewed current-source Process Monitor
+captures cover all 139 required launches and qualify milestone 5's synthetic
+Windows scope. Real Windows 98 acceptance remains milestone 6. Existing
+legacy full-parent saves and unbound children remain unsupported and are rejected
+without modification; do not implement their migration in this scope.
+
+The [6 October upstream validation](upstream-migration.md#process-monitor-verification)
+records successful Process Monitor coverage for generated DOS/floppy/VHD fixtures,
+superseding the earlier host-driver blocker for those captures. Real Windows 98
+guest lifecycle and acceptance still require milestone 6 validation; milestone 5's
+synthetic lifecycle coverage is recorded above. The
+[milestone 5 handoff](handoffs/milestone5-persistence-20261007.md)
+records the implementation scope; the evidence record and linked design notes
+describe the resulting changes.
 
 ## Identity increment implementation
 
@@ -155,15 +170,16 @@ The child is accompanied by a fixed-size `CHILD.DBI` binding entry in `.pure.zip
 It binds package ID, disk ID, canonical parent/child paths, SHA-256, parent UUID,
 virtual size and child UUID. Missing, corrupt, orphaned or mismatched bindings
 fail without replacing existing saves. Earlier unbound experimental children
-require explicit migration; they are not adopted automatically.
+are unsupported and are not adopted automatically. Migration is outside scope.
 
 The binding retains the parent timestamp used when the child was created. After
 strong identity verification, reopening uses that timestamp instead of the new
 ZIP entry timestamp. Thus repacking identical VHD bytes preserves saves without
 weakening the codec's timestamp check. Parent bytes, paths and disk/package IDs
 must still match. The binding entry shares the child's in-memory lifetime and
-write protection. Its publication uses the existing save ZIP; atomic generation
-publication and concurrency remain milestone 5 work.
+write protection. Milestone 5 publishes the child and binding in one complete
+save-ZIP generation under a lifetime writer lock. It preserves the immutable
+parent and rejects unsupported legacy saves without conversion.
 
 Validation: Release runtime/packager builds, 34,251 sanitizer/native-format
 checks, the 21-case generated-package identity matrix, and ordinary DOS/internal

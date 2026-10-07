@@ -399,16 +399,21 @@ data remain explicit child overrides.
 
 Bind saves to the package/disk identity, parent UUID, virtual size and strong
 parent fingerprint. A missing or mismatched parent must fail clearly without
-resetting saves. Existing full-VHD overlays require verified, recoverable
-migration. Guest flush/shutdown, reboot, unmount and relaunch must preserve
+resetting saves. Existing full-VHD overlays and earlier unbound children are
+unsupported and must be rejected without modifying their saves. Migration was
+discarded on 7 October 2026 because no current built package requires it.
+Guest flush/shutdown, reboot, unmount and relaunch must preserve
 changes, including when the executable is renamed. Validate corruption, I/O
 failure, concurrent access and save-state consistency before enabling support.
 
 Status:
 
 ```text
-IN DEVELOPMENT — mount/overlay and package fingerprint binding tested with synthetic guests;
-migration, durable checkpoints and Windows 98 acceptance pending
+SYNTHETIC MILESTONE 5 QUALIFIED — mount, identity binding, bounded checkpoints,
+recoverable publication, writer exclusion and disk/state consistency pass synthetic
+Windows tests and current-source Process Monitor review of 139 launches;
+real Windows 98 acceptance remains open as milestone 6;
+migration discarded
 ```
 
 Implementation stages and acceptance evidence are tracked in
@@ -646,6 +651,47 @@ Status:
 ```text
 MANDATORY
 ```
+
+---
+
+## REQ-SAVE-007 — Differencing child lifecycle and recoverable generations
+
+Milestone 5 requires a first-dirty checkpoint deadline for mounted, open
+children. Continued sector writes must not postpone it indefinitely. Safe
+host-time polling must also cover paused frames. Guest flush/reset, BIOS
+shutdown/poweroff/reboot, emulator shutdown/reset and numeric or containing-drive
+unmount must synchronously attempt the same publisher and report failure.
+
+Publish the complete writable ZIP, including child and binding, through checked
+write, flush, close and replacement operations inside the selected persistence
+directory. Retain a preceding validated generation across faults and interrupted
+publication. Recover only complete validated saves; a malformed-only transaction
+must report an error and preserve its bytes. Acquire writer exclusion before
+loading or recovering saves and hold it through teardown. Renamed/repacked EXEs
+with the same persistence identity must contend; different identities may run.
+
+Disk-bearing states and rewind must capture matching child data and binding,
+preflight configuration, framing and disk identity/format before changing live
+state, and roll back reported deeper decoder failures before resuming. Refresh
+disk codec caches on restoration and publish the restored timeline as a new dirty
+generation. A bounded state snapshot limit may be explicit; it must
+not change the normal disk-mount limit or allow a caller's smaller buffer to
+overflow. Unsupported legacy saves remain rejected; migration is discarded.
+
+Synthetic fault, termination, concurrency, lifecycle and state tests plus
+nonempty Process Monitor coverage establish only their tested paths. Host flush
+requests and process-kill recovery are not hardware power-loss qualification.
+
+The [milestone 5 evidence record](differencing-vhd-persistence-validation.md)
+records completed synthetic checks and two reviewed current-source Process
+Monitor captures covering all 139 required launches. The synthetic Windows
+milestone 5 scope is qualified. Real Windows 98 acceptance and optimization
+remain milestone 6.
+
+Status: implementation and validation are recorded in the
+[persistence design](milestone5-persistence-design.md) and
+[state contract](milestone5-state-design.md), with completed synthetic evidence
+and limitations in the validation record.
 
 ---
 
